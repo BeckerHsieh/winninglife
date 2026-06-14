@@ -1,0 +1,39 @@
+input:stype(5),blen(9),slen(-12),sl(0.015),sp(0.05);
+
+var:dif(0),dem(0),xmacd(0),xavg(0);
+
+dif=macd(close,13,26);
+dem=xaverage(dif,9);
+xmacd=dif-dem;
+xavg=xaverage(xmacd,9);
+
+if marketposition<=0 then
+begin
+    if (stype=1 and xmacd cross over 0)
+    or (stype=2 and currentbar>2 and xmacd>xmacd[1] and xmacd[1]>xmacd[2])
+    or (stype=3 and xmacd cross over xavg)
+    or (stype=4 and currentbar>2 and xmacd>xmacd[1] and xmacd[1]<xmacd[2])
+    or (stype=5 and xmacd cross over blen)
+    or (stype=6 and xmacd cross over slen) then
+        buy next bar at market;
+end;
+
+if marketposition>=0 then
+begin
+    if (stype=1 and xmacd cross under 0)
+    or (stype=2 and currentbar>2 and xmacd<xmacd[1] and xmacd[1]<xmacd[2])
+    or (stype=3 and xmacd cross under xavg)
+    or (stype=4 and currentbar>2 and xmacd<xmacd[1] and xmacd[1]>xmacd[2])
+    or (stype=5 and xmacd cross under slen)
+    or (stype=6 and xmacd cross under blen) then
+        sellshort next bar at market;
+end;
+
+if marketposition>0 then
+    sell next bar at entryprice*(1-sl) stop;
+if marketposition<0 then
+    buytocover next bar at entryprice*(1+sl) stop;
+if marketposition>0 then
+    sell next bar at entryprice*(1+sp) limit;
+if marketposition<0 then
+    buytocover next bar at entryprice*(1-sp) limit;

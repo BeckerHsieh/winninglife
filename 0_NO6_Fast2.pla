@@ -1,0 +1,142 @@
+// ==============================
+// Strategy: Breakout + Trend + Volatility + Direction Control
+// ==============================
+
+Inputs: 
+    tradeSignal(-1),     // 1=Long only, 0=Both, -1=Short only
+    pSTime(0915),
+    pETime(2400),
+    pBEntryLen(1),
+    FastAvg(60),
+    SlowAvg(180),
+    AvgFitr(60),
+    HLScope(150),
+    BasePoint(50);
+
+Vars: 
+    FastMA(0), 
+    SlowMA(0), 
+    Filter(0),
+
+    EntryCount(0),
+    LastEntryBar(0),
+    ConditionTime(false),
+
+    HLRange(0),
+    VolatilityFactor(0),
+    MaxEntries(0),
+
+    HH(0),
+    LL(0),
+
+    AllowLong(false),
+    AllowShort(false);
+
+// ==============================
+// Direction control
+// ==============================
+AllowLong  = (tradeSignal = 1) or (tradeSignal = 0);
+AllowShort = (tradeSignal = -1) or (tradeSignal = 0);
+
+// ==============================
+// Indicator calculation
+// ==============================
+FastMA = Average(Close, FastAvg);
+SlowMA = Average(Close, SlowAvg);
+Filter = Average(Close, AvgFitr);
+
+// Breakout levels (avoid lookahead bias)
+HH = Highest(High, AvgFitr)[1];
+LL = Lowest(Low, AvgFitr)[1];
+
+// Time filter
+ConditionTime = (t > pSTime) and (t < pETime);
+
+// ==============================
+// Reset entry count
+// ==============================
+If CurrentBar > AvgFitr then
+Begin
+    If CurrentBar - LastEntryBar > AvgFitr then
+        EntryCount = 0;
+End;
+
+// ==============================
+// Volatility filter
+// ==============================
+HLRange = Highest(High, AvgFitr) - Lowest(Low, AvgFitr);
+
+
+//if date = 1260122 then
+//print(date,time,"------->R=",HLRange ,",f=",FastMA ,",s=",SlowMA,",c1=",FastMA < SlowMA,",c2=",HLRange > HLScope );
+
+// ==============================
+// Only trade when volatility is enough
+// ==============================
+If HLRange > HLScope then
+Begin
+
+    VolatilityFactor = IntPortion(HLRange / HLScope);
+    MaxEntries = pBEntryLen + VolatilityFactor;
+
+    // Safety cap
+    MaxEntries = MinList(MaxEntries, 1);
+
+    // ==============================
+    // Long Entry
+    // ==============================
+    If ConditionTime
+    and MarketPosition = 0
+    and EntryCount < MaxEntries
+    and AllowLong
+    and FastMA > SlowMA
+  //  and Close > Filter
+  //  and Close > HH
+    then
+    Begin
+        Buy("BF2") next bar at Close[3]+BasePoint stop;
+
+        EntryCount = EntryCount + 1;
+        LastEntryBar = CurrentBar;
+    End;
+    
+
+
+    // ==============================
+    // Short Entry
+    // ==============================
+    If ConditionTime
+    and MarketPosition = 0
+    and EntryCount < MaxEntries
+    and AllowShort
+    and FastMA < SlowMA
+    and Close < Filter
+    and Close < LL
+    then
+    Begin
+        sellshort("SF2") next bar at Close[3]-BasePoint stop;
+//        sellshort("SF2") next bar at Close stop;
+        EntryCount = EntryCount + 1;
+        LastEntryBar = CurrentBar;
+    End;
+
+End;
+
+// ==============================
+// Long Exit
+// ==============================
+If MarketPosition = 1 
+and FastMA < SlowMA then
+    Sell("LongExit") next bar at market;
+
+// ==============================
+// Short Exit
+// ==============================
+If MarketPosition = -1 
+and FastMA > SlowMA 
+And Close > entryprice(0)
+    then
+    BuyToCover("SF2Exit") next bar at market;
+
+
+

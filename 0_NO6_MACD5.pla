@@ -1,0 +1,23 @@
+input:blen(9),slen(-12),sl(0.015),sp(0.05);
+
+var:dif(0),dem(0),xmacd(0);
+
+dif=macd(close,13,26);
+dem=xaverage(dif,9);
+xmacd=dif-dem;
+
+if marketposition<=0
+    and xmacd cross over blen then
+    buy next bar at market;
+if marketposition>=0
+    and xmacd cross under slen then
+    sellshort next bar at market;
+
+if marketposition>0 then
+    sell next bar at entryprice*(1-sl) stop;
+if marketposition<0 then
+    buytocover next bar at entryprice*(1+sl) stop;
+if marketposition>0 then
+    sell next bar at entryprice*(1+sp) limit;
+if marketposition<0 then
+    buytocover next bar at entryprice*(1-sp) limit;

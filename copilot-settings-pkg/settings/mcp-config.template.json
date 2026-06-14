@@ -1,0 +1,31 @@
+﻿{
+    "mcpServers":  {
+                       "firecrawl":  {
+                                         "command":  "npx",
+                                         "args":  [
+                                                      "-y",
+                                                      "firecrawl-mcp"
+                                                  ],
+                                         "env":  {
+                                                     "FIRECRAWL_API_KEY":  "PLACEHOLDER_FIRECRAWL_KEY"
+                                                 }
+                                     },
+                       "filesystem":  {
+                                          "command":  "npx",
+                                          "args":  [
+                                                       "-y",
+                                                       "@modelcontextprotocol/server-filesystem",
+                                                       "PLACEHOLDER_DIR1",
+                                                       "PLACEHOLDER_DIR2",
+                                                       "PLACEHOLDER_DIR3"
+                                                   ]
+                                      },
+                       "playwright":  {
+                                          "command":  "npx",
+                                          "args":  [
+                                                       "-y",
+                                                       "@playwright/mcp"
+                                                   ]
+                                      }
+                   }
+}
