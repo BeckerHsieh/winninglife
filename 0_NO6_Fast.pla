@@ -6,7 +6,7 @@ Inputs:
     tradeSignal(-1),     // 1=Long only, 0=Both, -1=Short only
     pSTime(0915),
     pETime(2400),
-    pBEntryLen(1),
+    pBEntryLen(6),
     FastAvg(60),
     SlowAvg(180),
     AvgFitr(60),
@@ -55,11 +55,9 @@ ConditionTime = (t > pSTime) and (t < pETime);
 // ==============================
 // Reset entry count
 // ==============================
-If CurrentBar > AvgFitr then
-Begin
-    If CurrentBar - LastEntryBar > AvgFitr then
-        EntryCount = 0;
-End;
+If Date <> Date[1] then
+    EntryCount = 0;
+
 
 // ==============================
 // Volatility filter
@@ -78,9 +76,6 @@ Begin
 
     VolatilityFactor = IntPortion(HLRange / HLScope);
     MaxEntries = pBEntryLen + VolatilityFactor;
-
-    // Safety cap
-    MaxEntries = MinList(MaxEntries, 1);
 
     // ==============================
     // Long Entry
