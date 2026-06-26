@@ -19,10 +19,18 @@ Get-Content $envFile | Where-Object { $_ -notmatch "^\s*#" -and $_ -match "=" } 
     $envVars[$parts[0].Trim()] = $parts[1].Trim()
 }
 
+function Resolve-EnvPath([string]$value) {
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        return $value
+    }
+
+    return [Environment]::ExpandEnvironmentVariables($value)
+}
+
 $apiKey = $envVars["FIRECRAWL_API_KEY"]
-$d1     = $envVars["FILESYSTEM_DIR_1"]
-$d2     = $envVars["FILESYSTEM_DIR_2"]
-$d3     = $envVars["FILESYSTEM_DIR_3"]
+$d1     = Resolve-EnvPath $envVars["FILESYSTEM_DIR_1"]
+$d2     = Resolve-EnvPath $envVars["FILESYSTEM_DIR_2"]
+$d3     = Resolve-EnvPath $envVars["FILESYSTEM_DIR_3"]
 
 if (-not $apiKey -or $apiKey -like "*xxxx*") {
     Write-Host "[ERROR] FIRECRAWL_API_KEY not set in .env" -ForegroundColor Red

@@ -1,0 +1,740 @@
+{
+  "requests": [
+    {
+      "time": 1782453650784,
+      "method": "GET",
+      "url": "https://scantrader.com/article/019efe1021b30000122cdd000000000000",
+      "type": "document"
+    },
+    {
+      "time": 1782453651409,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/fonts/cff684e.v2.17.8.woff2",
+      "type": "font"
+    },
+    {
+      "time": 1782453651419,
+      "method": "GET",
+      "url": "https://storage.googleapis.com/quants-images-prod/scantrader/upload/017fefa57a6c0000060a000000000000.jpg",
+      "type": "image"
+    },
+    {
+      "time": 1782453651506,
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-38XL2ZFWWH&gtm=45je66o1v890121657za20gzb850038441zd850038441&_p=1782453642872&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQC&are=1&cid=390917951.1782447725&frm=0&pscdl=noapi&rcb=1&sr=1280x720&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uam=&uamb=0&uap=Windows&uapv=19.0.0&uaw=0&ul=zh-tw&gaf=2&_s=3&tag_exp=115938466~115938468~119027224~119576891~119576895&sid=1782453644&sct=2&seg=1&dl=https%3A%2F%2Fscantrader.com%2F&dt=%E5%BE%AE%E8%82%A1%E5%8A%9B%20ScanTrader%20%EF%BD%9C%20%E6%9C%80%E5%A4%A7%E7%9A%84%E5%8D%B3%E6%99%82%E6%8A%95%E8%B3%87%E7%A4%BE%E7%BE%A4%20%EF%BD%9C%20%E6%9C%80%E8%B1%90%E5%AF%8C%E7%9A%84%E7%90%86%E8%B2%A1%E9%81%94%E4%BA%BA%E8%B3%87%E8%A8%8A%EF%BC%81&_tu=wAQ&en=user_engagement&_et=6968&tfd=22364",
+      "type": "fetch"
+    },
+    {
+      "time": 1782453651508,
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-14S2HP5QQZ&gtm=45je66o1v9125644512za20g&_p=1782453642872&gcd=13l3l3l3l2l1&npa=0&dma=0&_eu=EBAIAGQ&are=1&cid=390917951.1782447725&frm=0&ir=1&pscdl=noapi&rcb=2&sr=1280x720&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uam=&uamb=0&uap=Windows&uapv=19.0.0&uaw=0&ul=zh-tw&gaf=2&_s=2&tag_exp=115938466~115938468~119027224~119576891~119576895&dl=https%3A%2F%2Fscantrader.com%2F&dt=%E5%BE%AE%E8%82%A1%E5%8A%9B%20ScanTrader%20%EF%BD%9C%20%E6%9C%80%E5%A4%A7%E7%9A%84%E5%8D%B3%E6%99%82%E6%8A%95%E8%B3%87%E7%A4%BE%E7%BE%A4%20%EF%BD%9C%20%E6%9C%80%E8%B1%90%E5%AF%8C%E7%9A%84%E7%90%86%E8%B2%A1%E9%81%94%E4%BA%BA%E8%B3%87%E8%A8%8A%EF%BC%81&uid=34582-0167c6ef26d100000bbe000000000000&sid=1782453645&sct=2&seg=0&_tu=wAQ&en=index&_ee=1&gap.uat=0~115938466~115938468~119027224&ep.ua_dimension_2=34582-0167c6ef26d100000bbe000000000000&ep.event_category=Enter%20Route&ep.event_label=%2F&ep.value=1&_et=3070&tfd=22364",
+      "type": "fetch"
+    },
+    {
+      "time": 1782453651508,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/fonts/83bebaf.v2.17.8.woff",
+      "type": "font"
+    },
+    {
+      "time": 1782453651508,
+      "method": "POST",
+      "url": "https://www.google.com/g/collect?v=2&tid=G-14S2HP5QQZ&gtm=45je66o1v9125644512za20g&_p=1782453642872&gcd=13l3l3l3l2l1&npa=0&dma=0&_eu=EBAIAGQ&are=1&cid=390917951.1782447725&frm=0&ir=1&pscdl=noapi&rcb=2&sr=1280x720&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot%29A%253BBrand%3B24.0.0.0&uam=&uamb=0&uap=Windows&uapv=19.0.0&uaw=0&ul=zh-tw&gaf=3&_s=2&tag_exp=115938466%7E115938468%7E119027224%7E119576891%7E119576895&dl=https%3A%2F%2Fscantrader.com%2F&dt=%E5%BE%AE%E8%82%A1%E5%8A%9B+ScanTrader+%EF%BD%9C+%E6%9C%80%E5%A4%A7%E7%9A%84%E5%8D%B3%E6%99%82%E6%8A%95%E8%B3%87%E7%A4%BE%E7%BE%A4+%EF%BD%9C+%E6%9C%80%E8%B1%90%E5%AF%8C%E7%9A%84%E7%90%86%E8%B2%A1%E9%81%94%E4%BA%BA%E8%B3%87%E8%A8%8A%EF%BC%81&uid=34582-0167c6ef26d100000bbe000000000000&sid=1782453645&sct=2&seg=0&_tu=wAQ&en=index&_ee=1&gap.uat=0%7E115938466%7E115938468%7E119027224&ep.ua_dimension_2=34582-0167c6ef26d100000bbe000000000000&ep.event_category=Enter+Route&ep.event_label=%2F&ep.value=1&_et=3070&tfd=22364",
+      "type": "fetch"
+    },
+    {
+      "time": 1782453651508,
+      "method": "POST",
+      "url": "https://www.google.com/g/collect?v=2&tid=G-38XL2ZFWWH&gtm=45je66o1v890121657za20gzb850038441zd850038441&_p=1782453642872&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQC&are=1&cid=390917951.1782447725&frm=0&pscdl=noapi&rcb=1&sr=1280x720&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot%29A%253BBrand%3B24.0.0.0&uam=&uamb=0&uap=Windows&uapv=19.0.0&uaw=0&ul=zh-tw&gaf=3&_s=3&tag_exp=115938466%7E115938468%7E119027224%7E119576891%7E119576895&sid=1782453644&sct=2&seg=1&dl=https%3A%2F%2Fscantrader.com%2F&dt=%E5%BE%AE%E8%82%A1%E5%8A%9B+ScanTrader+%EF%BD%9C+%E6%9C%80%E5%A4%A7%E7%9A%84%E5%8D%B3%E6%99%82%E6%8A%95%E8%B3%87%E7%A4%BE%E7%BE%A4+%EF%BD%9C+%E6%9C%80%E8%B1%90%E5%AF%8C%E7%9A%84%E7%90%86%E8%B2%A1%E9%81%94%E4%BA%BA%E8%B3%87%E8%A8%8A%EF%BC%81&_tu=wAQ&en=user_engagement&_et=6968&tfd=22364",
+      "type": "fetch"
+    },
+    {
+      "time": 1782453651512,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/101154a1b9fea54ab61f.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453651512,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/20.3f9c99321bc86b9ee83b.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453651516,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/21.0ef376d5ba457df840dc.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453651517,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/19.9b6f1f22efdfc6806daa.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453651517,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/35.ef9b400804ab8a461771.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453651517,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/0.011b484428555b40727a.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453651517,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/3.ca44a0a2fda80bc935b5.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453651517,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/4.436a44f538d5696f7d5c.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453651517,
+      "method": "GET",
+      "url": "https://fonts.googleapis.com/css?family=Roboto:400,500,700,400italic|Material+Icons|Material+Icons+Outlined|Material+Icons+Sharp|Material+Icons+Round",
+      "type": "stylesheet"
+    },
+    {
+      "time": 1782453651517,
+      "method": "GET",
+      "url": "https://www.googletagmanager.com/gtag/js?id=G-38XL2ZFWWH",
+      "type": "script"
+    },
+    {
+      "time": 1782453651517,
+      "method": "GET",
+      "url": "https://scantrader.com/v2/google_analytics.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453652419,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/img/fd4de53.v2.17.8.png",
+      "type": "image"
+    },
+    {
+      "time": 1782453652420,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/img/21adbc1.v2.17.8.png",
+      "type": "image"
+    },
+    {
+      "time": 1782453652420,
+      "method": "GET",
+      "url": "https://storage.googleapis.com/quants-images-prod/scantrader/upload/019efe0cad990000122cdd000000000000.jpg",
+      "type": "image"
+    },
+    {
+      "time": 1782453652420,
+      "method": "GET",
+      "url": "https://storage.googleapis.com/quants-images-prod/scantrader/upload/019efe0cecf70000122cdd000000000000.jpg",
+      "type": "image"
+    },
+    {
+      "time": 1782453652842,
+      "method": "GET",
+      "url": "https://js.tappaysdk.com/tpdirect/v5.1.0",
+      "type": "script"
+    },
+    {
+      "time": 1782453652842,
+      "method": "GET",
+      "url": "https://d.line-scdn.net/r/web/social-plugin/js/thirdparty/loader.min.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453652842,
+      "method": "GET",
+      "url": "https://static.line-scdn.net/liff/edge/2.1/sdk.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453653182,
+      "method": "GET",
+      "url": "https://www.googletagmanager.com/gtm.js?id=GTM-PDJ5NLQ",
+      "type": "script"
+    },
+    {
+      "time": 1782453653188,
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/materialicons/v145/flUhRq6tzZclQEJ-Vdg-IuiaDsNc.woff2",
+      "type": "font"
+    },
+    {
+      "time": 1782453653189,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/fonts/c967a94.v2.17.8.woff2",
+      "type": "font"
+    },
+    {
+      "time": 1782453653189,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/fonts/3ceb50e.v2.17.8.woff2",
+      "type": "font"
+    },
+    {
+      "time": 1782453653199,
+      "method": "GET",
+      "url": "https://www.youtube.com/embed/CBX8sHzY41k?&wmode=opaque",
+      "type": "document"
+    },
+    {
+      "time": 1782453653287,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/fonts/cff684e.v2.17.8.woff2",
+      "type": "font"
+    },
+    {
+      "time": 1782453653307,
+      "method": "GET",
+      "url": "https://www.google-analytics.com/analytics.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453653320,
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-38XL2ZFWWH&gtm=45je66o1v890121657za200zd890121657&_p=1782453653162&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAEAGQC&ae=a&are=1&cid=390917951.1782447725&frm=0&pscdl=noapi&rcb=10&sr=1280x720&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uam=&uamb=0&uap=Windows&uapv=19.0.0&uaw=0&ul=zh-tw&gaf=2&_s=1&tag_exp=115616986~115938466~115938469~118395335~119027224~119576891~119576895&sid=1782453644&sct=2&seg=1&dl=https%3A%2F%2Fscantrader.com%2Farticle%2F019efe1021b30000122cdd000000000000&dt=%E3%80%90%E5%8A%A0%E5%BC%B7%E9%8C%A0%E3%80%91%23%E8%B2%A1%E7%B6%93V%E6%80%AA%E5%AE%A2(%E9%A6%AE%E6%B3%89%E5%AF%8C)%20%23%E9%BB%83%E5%95%9F%E4%B9%99%E3%80%8A%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8B2026.0625%20%E7%A9%BA%E6%96%B9%E9%8C%AF%E9%81%8E%E4%B8%80%E6%93%8A%E5%BF%85%E6%AE%BA%E6%A9%9F%E6%9C%83%EF%BC%9F%E5%8D%8A%E5%B0%8E%E9%AB%9460%25%E4%B9%96%E9%9B%A2%E4%BF%AE%E6%AD%A3%E8%AD%A6%E5%A0%B1%E6%9C%AA%E8%A7%A3%E9%99%A4%EF%BC%81%E5%B0%8F%E5%BF%83%E6%80%A5%E6%AE%BA%E5%9B%9E%E9%A6%AC%E6%A7%8D%EF%BC%9F(%E5%BD%B1%E7%89%87)%20-%20%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8C%E9%80%9F%E6%95%88%E9%8C%A0%E3%80%8D%20%7C%20%E5%BE%AE%E8%82%A1%E5%8A%9B%20ScanTrader&en=scroll&epn.percent_scrolled=90&tfd=2532",
+      "type": "fetch"
+    },
+    {
+      "time": 1782453653320,
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-38XL2ZFWWH&gtm=45je66o1v890121657z8850038441za200zd890121657&_p=1782453653162&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQC&are=1&cid=390917951.1782447725&frm=0&pscdl=noapi&rcb=10&sr=1280x720&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uam=&uamb=0&uap=Windows&uapv=19.0.0&uaw=0&ul=zh-tw&gaf=2&_s=2&tag_exp=115616986~115938466~115938469~118395335~119027224~119576891~119576895&sid=1782453644&sct=2&seg=1&dl=https%3A%2F%2Fscantrader.com%2Farticle%2F019efe1021b30000122cdd000000000000&dt=%E3%80%90%E5%8A%A0%E5%BC%B7%E9%8C%A0%E3%80%91%23%E8%B2%A1%E7%B6%93V%E6%80%AA%E5%AE%A2(%E9%A6%AE%E6%B3%89%E5%AF%8C)%20%23%E9%BB%83%E5%95%9F%E4%B9%99%E3%80%8A%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8B2026.0625%20%E7%A9%BA%E6%96%B9%E9%8C%AF%E9%81%8E%E4%B8%80%E6%93%8A%E5%BF%85%E6%AE%BA%E6%A9%9F%E6%9C%83%EF%BC%9F%E5%8D%8A%E5%B0%8E%E9%AB%9460%25%E4%B9%96%E9%9B%A2%E4%BF%AE%E6%AD%A3%E8%AD%A6%E5%A0%B1%E6%9C%AA%E8%A7%A3%E9%99%A4%EF%BC%81%E5%B0%8F%E5%BF%83%E6%80%A5%E6%AE%BA%E5%9B%9E%E9%A6%AC%E6%A7%8D%EF%BC%9F(%E5%BD%B1%E7%89%87)%20-%20%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8C%E9%80%9F%E6%95%88%E9%8C%A0%E3%80%8D%20%7C%20%E5%BE%AE%E8%82%A1%E5%8A%9B%20ScanTrader&en=page_view&_et=1&tfd=2535",
+      "type": "fetch"
+    },
+    {
+      "time": 1782453653324,
+      "method": "POST",
+      "url": "https://www.google-analytics.com/j/collect?v=1&_v=j102&a=1407660437&t=pageview&_s=1&dl=https%3A%2F%2Fscantrader.com%2Farticle%2F019efe1021b30000122cdd000000000000&ul=zh-tw&dt=%E3%80%90%E5%8A%A0%E5%BC%B7%E9%8C%A0%E3%80%91%23%E8%B2%A1%E7%B6%93V%E6%80%AA%E5%AE%A2(%E9%A6%AE%E6%B3%89%E5%AF%8C)%20%23%E9%BB%83%E5%95%9F%E4%B9%99%E3%80%8A%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8B2026.0625%20%E7%A9%BA%E6%96%B9%E9%8C%AF%E9%81%8E%E4%B8%80%E6%93%8A%E5%BF%85%E6%AE%BA%E6%A9%9F%E6%9C%83%EF%BC%9F%E5%8D%8A%E5%B0%8E%E9%AB%9460%25%E4%B9%96%E9%9B%A2%E4%BF%AE%E6%AD%A3%E8%AD%A6%E5%A0%B1%E6%9C%AA%E8%A7%A3%E9%99%A4%EF%BC%81%E5%B0%8F%E5%BF%83%E6%80%A5%E6%AE%BA%E5%9B%9E%E9%A6%AC%E6%A7%8D%EF%BC%9F(%E5%BD%B1%E7%89%87)%20-%20%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8C%E9%80%9F%E6%95%88%E9%8C%A0%E3%80%8D%20%7C%20%E5%BE%AE%E8%82%A1%E5%8A%9B%20ScanTrader&sr=1280x720&vp=1265x720&_u=QACAAEABAAAAACAAI~&jid=&gjid=&cid=390917951.1782447725&tid=UA-116559151-3&_gid=374375729.1782447726&_slc=1&gtm=45He66o1n81PDJ5NLQv850038441za200zd850038441&gcd=13l3l3l3l1l1&dma=0&tag_exp=0~115616985~115938466~115938468~119027224&z=1408259638",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453653984,
+      "method": "GET",
+      "url": "https://www.googletagmanager.com/gtag/js?id=G-14S2HP5QQZ&cx=c&_slc=1",
+      "type": "script"
+    },
+    {
+      "time": 1782453654982,
+      "method": "GET",
+      "url": "https://www.youtube.com/embed/CBX8sHzY41k?&wmode=opaque",
+      "type": "document"
+    },
+    {
+      "time": 1782453655065,
+      "method": "GET",
+      "url": "https://storage.googleapis.com/quants-images-prod/quants-images-prod/share_h5-images/user-picture/U1cf32c7258a43848a9c437b695a81348.jpg",
+      "type": "image"
+    },
+    {
+      "time": 1782453655066,
+      "method": "GET",
+      "url": "https://cdn.embedly.com/widgets/platform.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453655068,
+      "method": "GET",
+      "url": "https://api.scantrader.com/social/article?query=eyJmaWx0ZXIiOlt7ImZpZWxkIjoic3RhdHVzLmRlbGV0ZWQiLCJ2YWx1ZSI6bnVsbCwib3BlcmF0b3IiOiI9IiwibG9naWMiOjB9LHsiZmllbGQiOiJpZGVudGl0eSIsInZhbHVlIjoiMDE5ZWZlMTAyMWIzMDAwMDEyMmNkZDAwMDAwMDAwMDAwMCIsIm9wZXJhdG9yIjoiPSIsImxvZ2ljIjowfSx7ImZpZWxkIjoia2luZCIsInZhbHVlIjpbInRleHQiLCJhdWRpbyIsInZpZGVvIl0sIm9wZXJhdG9yIjoiSW4iLCJsb2dpYyI6MH1dLCJmaWVsZHMiOlsiaWRlbnRpdHkiLCJhY2NvdW50LmlkZW50aXR5IiwiYWNjb3VudC5hdmF0YXIiLCJhY2NvdW50Lm5hbWUiLCJhY2NvdW50LnNlcmlhbCIsImFjY291bnQuc2VydmljZSIsImFjY291bnQua2luZCIsImFjY291bnQub3duUm9sZXMiLCJhY2NvdW50Lm9yZ2FuaXphdGlvbi5raW5kIiwiYWNjb3VudC5vcmdhbml6YXRpb24uYWxpYXMiLCJhY2NvdW50LmJlbG9uZ09yZyIsImFjY291bnQuYmVsb25nT3JnSW5mbyIsImFjY291bnQuZm9sbG93ZWQiLCJhY2NvdW50LmFydGljbGVzIiwiYWNjb3VudC5jb2xsZWN0aW9uIiwicmVhZCIsImNvbGxlY3Rpb24iLCJsaWtlIiwidmlldyIsImxpa2VzIiwiY29tbWVudFJlcGx5IiwiY29sbGVjdGVkIiwidmlkZW8uaWRlbnRpdHkiLCJ2aWRlby5zdGF0ZSIsInZpZGVvLnByb3ZpZGUiLCJ2aWRlby5wcm92aWRlSWQiLCJ2aWRlby5wcm92aWRlS2V5IiwidmlkZW8uc2NyaXB0IiwidmlkZW8uZW1iZWRVcmwiXX0%3D",
+      "type": "xhr",
+      "response": {
+        "status": 200,
+        "ct": "application/json; charset=utf-8",
+        "body": "{\"data\":{\"type\":\"article\",\"id\":\"019efe1021b30000122cdd000000000000\",\"attributes\":{\"view\":250,\"likes\":1,\"collected\":0,\"forcePublic\":false,\"account\":{\"followed\":6144,\"articles\":5451,\"avatar\":\"https://storage.googleapis.com/quants-images-prod/scantrader/upload/016df6e29e980000060b000000000000.png\",\"identity\":\"016d9597cb8a000005e9000000000000\",\"name\":{\"nick\":\"我是金錢爆「速效錠」\",\"real\":\"\"},\"serial\":77340,\"kind\":\"personal\",\"ownRoles\":{\"admin\":[],\"contentFreeCreator\":[],\"contentFreeEditor\":[],\"contentPaidCreator\":[],\"contentPaidEditor\":[],\"contentPaidViewer\":[],\"contentComment\":[],\"contentAdmin\":[\"0167d194e4ef00001b0b000000000000\",\"017371a9e9c8000048a9000000000000\",\"0189b0a31114000005f1000000000000\"],\"accountant\":[],\"userList\":[]},\"service\":true,\"collection\":\"016e0d935dd600000608000000000000\"},\"video\":{\"provide\":\"jwPlayer\",\"state\":\"complete\",\"identity\":\"019efe0891e90000122cdd000000000000\",\"provideKey\":\"gLtu4uZd\",\"script\":\"(function() {\\nif(!window.jwplayer){\\n/*!\\n   JW Player version 8.49.3\\n   Copyright (c) 2026, JW Player, All Rights Reserved\\n   This source code and its use and distribution is subject to the terms\\n   and conditions of the applicable license agreement.\\n   https://www.jwplayer.com/tos/\\n   This product includes portions of other software. For the full text of licenses, see\\n   https://ssl.p.jwpcdn.com/player/v/8.49.3/notice.txt\\n*/\\n(()=>{var e,t,n,r,u,i,o={4601(e,t,n){var r=n(8420),u=n(3838),i=TypeError;e.exports=function(e){if(r(e))return e;throw i(u(e)+\\\" is not a function\\\")}},3938(e,t,n){var r=n(5335),u=String,i=TypeError;e.exports=function(e){if(r(e))return e;throw i(u(e)+\\\" is not an object\\\")}},8186(e,t,n){var r=n(5476),u=n(6539),i=n(3493),o=function(e){return function(t,n,o){var a,s=r(t),c=i(s),l=u(o,c);if(e&&n!=n){for(;c>l;)if((a=s[l++])!=a)return!0}else for(;c>l;l++)if((e||l in s)&&s[l]===n)return e||l||0;return!e&&-1}};e.exports={includes:o(!0),indexOf:o(!1)}},3892(e,t,n){var r=n(8679),u=n(1466),i=n(5335),o=n(1602)(\\\"species\\\"),a=Array;e.exports=f"
+      }
+    },
+    {
+      "time": 1782453655068,
+      "method": "POST",
+      "url": "https://api.scantrader.com/social/history",
+      "type": "xhr",
+      "response": {
+        "status": 200,
+        "ct": "application/json; charset=utf-8",
+        "body": "{\"data\":{\"type\":\"history\",\"id\":\"019f028458400000122cdd000000000000\",\"attributes\":{\"status\":{\"deleted\":null,\"created\":1782453655616,\"updated\":1782453655616},\"kind\":\"article\",\"_id\":\"6a3e1597351f152cefe71c2e\",\"account\":\"0167c6ef26d100000bbe000000000000\",\"index\":\"019efe1021b30000122cdd000000000000\",\"fingerprint\":null,\"identity\":\"019f028458400000122cdd000000000000\",\"__v\":0}}}"
+      }
+    },
+    {
+      "time": 1782453655068,
+      "method": "GET",
+      "url": "https://api.scantrader.com/social/articles?query=eyJmaWx0ZXIiOlt7ImZpZWxkIjoic3RhdHVzLmRlbGV0ZWQiLCJ2YWx1ZSI6bnVsbCwib3BlcmF0b3IiOiI9IiwibG9naWMiOjB9LHsiZmllbGQiOiJhY2NvdW50IiwidmFsdWUiOlsiMDE2ZDk1OTdjYjhhMDAwMDA1ZTkwMDAwMDAwMDAwMDAiXSwib3BlcmF0b3IiOiJJbiIsImxvZ2ljIjowfSx7ImZpZWxkIjoia2luZCIsInZhbHVlIjpbInRleHQiLCJhdWRpbyIsInZpZGVvIl0sIm9wZXJhdG9yIjoiSW4iLCJsb2dpYyI6MH0seyJmaWVsZCI6ImhpZGRlbiIsInZhbHVlIjpmYWxzZSwib3BlcmF0b3IiOiI9IiwibG9naWMiOjB9LHsiZmllbGQiOiJkcmFmdGVkIiwidmFsdWUiOmZhbHNlLCJvcGVyYXRvciI6Ij0iLCJsb2dpYyI6MH0seyJmaWVsZCI6InNjaGVkdWxpbmciLCJ2YWx1ZSI6ZmFsc2UsIm9wZXJhdG9yIjoiPSIsImxvZ2ljIjowfV0sImZpZWxkcyI6WyJpZGVudGl0eSIsInRpdGxlIiwicHVibGlzaGVkIl0sInBhZ2UiOnsibGltaXQiOjgsIm9mZnNldCI6MH0sInNvcnQiOnsicHVibGlzaGVkIjotMX19",
+      "type": "xhr",
+      "response": {
+        "status": 200,
+        "ct": "application/json; charset=utf-8",
+        "body": "{\"data\":[{\"type\":\"article\",\"id\":\"019f023c2f820000122cdd000000000000\",\"attributes\":{\"account\":{\"identity\":\"016d9597cb8a000005e9000000000000\"},\"title\":\"【金錢速報】2026.06.26 我是金錢爆《速效錠》  籌碼專家 阿斯匹靈(邱正偉) VS. 半導體專家 Edward Lin 來賓資料早知道！\",\"published\":1782448925000,\"identity\":\"019f023c2f820000122cdd000000000000\"}},{\"type\":\"article\",\"id\":\"019efe226cf60000122cdd000000000000\",\"attributes\":{\"account\":{\"identity\":\"016d9597cb8a000005e9000000000000\"},\"title\":\"【大K筆記】2026.0625我是金錢爆《速效錠》\",\"published\":1782380125000,\"identity\":\"019efe226cf60000122cdd000000000000\"}},{\"type\":\"article\",\"id\":\"019efe21baeb0000122cdd000000000000\",\"attributes\":{\"account\":{\"identity\":\"016d9597cb8a000005e9000000000000\"},\"title\":\"空方錯過一擊必殺機會？半導體60%乖離修正警報未解除！小心急殺回馬槍？《我是金錢爆》普通錠 2026.0625 #大K分析師(曾煥文) #財經V怪客(馮泉富) #黃啟乙(台股|美股|AI|半導體)\",\"published\":1782380082000,\"identity\":\"019efe21baeb0000122cdd000000000000\"}},{\"type\":\"article\",\"id\":\"019efe1021b30000122cdd000000000000\",\"attributes\":{\"account\":{\"identity\":\"016d9597cb8a000005e9000000000000\"},\"title\":\"【加強錠】#財經V怪客(馮泉富) #黃啟乙《我是金錢爆》2026.0625 空方錯過一擊必殺機會？半導體60%乖離修正警報未解除！小心急殺回馬槍？\",\"published\":1782378929000,\"identity\":\"019efe1021b30000122cdd000000000000\"}},{\"type\":\"article\",\"id\":\"019efd1acd610000122cdd000000000000\",\"attributes\":{\"account\":{\"identity\":\"016d9597cb8a000005e9000000000000\"},\"title\":\"【金錢速報】2026.06.25 我是金錢爆《速效錠》  財經V怪客 Vincent(馮泉富) VS. 先探週刊總主筆 黃啟乙 來賓資料早知道！\",\"published\":1782362851000,\"identity\":\"019efd1acd610000122cdd000000000000\"}},{\"type\":\"article\",\"id\":\"019ef93ade3d0000122cdd000000000000\",\"attributes\":{\"account\":{\"identity\":\"016d9597cb8a000005e9000000000000\"},\"title\":\"全球科技股拋售潮海嘯！暴跌背後的鬼故事？雲端巨頭自由現金流出現斷崖式下跌！《我是金錢爆》普通錠 2026.0624 #大K分析師(曾煥文)#杜金龍 #王兆立(台股|AI|半導體|通膨|原油|期貨)\",\"published\":1782297844000,\"identity\":\"019ef93ade3d0000122cdd000000000000\"}},{\"type\":\"article\",\"id\":\"019ef935c9730000122cdd000000000000\",\"attributes\":{\"account\":{\"identity\":\"016d9597cb8a000005e9000000000000\"},\"title\":\"【大K筆記】2026.0624我是金錢爆《速效錠》\",\"published\":1782297507000,\"identity\":\"019ef935c9730000122cdd0000000000"
+      }
+    },
+    {
+      "time": 1782453655068,
+      "method": "GET",
+      "url": "https://api.scantrader.com/social/channels?query=eyJmaWx0ZXIiOlt7ImZpZWxkIjoic3RhdHVzLmRlbGV0ZWQiLCJ2YWx1ZSI6bnVsbCwib3BlcmF0b3IiOiI9IiwibG9naWMiOjB9LHsiZmllbGQiOiJhY2NvdW50IiwidmFsdWUiOlsiMDE2ZDk1OTdjYjhhMDAwMDA1ZTkwMDAwMDAwMDAwMDAiXSwib3BlcmF0b3IiOiJJbiIsImxvZ2ljIjowfV0sImZpZWxkcyI6WyJpZGVudGl0eSIsImNvdmVyIiwidGl0bGUiLCJjb250ZW50IiwicHJpY2UiLCJ1bml0V29yZCIsInRyaWFsIiwiYXV0b1JlbmV3YWwiLCJleHBpcmVkIiwicHVibGlzaGVkIiwic3Vic2NyaXB0aW9ucyIsIm1heGltdW0iLCJlbmFibGVkIiwiYXBwbHkiLCJoaWRkZW4iLCJjb252ZXJ0QXV0b1JlbmV3YWxUb1NpbmdsZSIsIm91dHNpZGVVcmwiLCJvZmZTaGVsZiIsImFjY291bnQua2luZCIsImFjY291bnQub3JnYW5pemF0aW9uLmtpbmQiLCJhY2NvdW50Lm9yZ2FuaXphdGlvbi5hbGlhcyIsImFjY291bnQuc2VydmljZSIsImFjY291bnQuaWRlbnRpdHkiLCJhY2NvdW50LnNlcmlhbCIsImFjY291bnQubmFtZSIsImFjY291bnQuYXZhdGFyIiwiYWNjb3VudC5vd25Sb2xlcyIsImFjY291bnQuYmVsb25nT3JnIiwiYWNjb3VudC5iZWxvbmdPcmdJbmZvIiwiY2F0ZWdvcmllcy5pZGVudGl0eSIsImNhdGVnb3JpZXMubmFtZSJdLCJwYWdlIjp7ImxpbWl0Ijo1MDAsIm9mZnNldCI6MH0sInNvcnQiOnsicHJpY2UiOjF9fQ%3D%3D",
+      "type": "xhr",
+      "response": {
+        "status": 200,
+        "ct": "application/json; charset=utf-8",
+        "body": "{\"data\":[{\"type\":\"channel\",\"id\":\"016dc8712fd500000607000000000000\",\"attributes\":{\"trial\":{\"time\":0,\"price\":0},\"hidden\":{\"subscriptions\":true,\"list\":true},\"apply\":1571371200000,\"autoRenewal\":1,\"expired\":null,\"maximum\":-1,\"enabled\":false,\"cover\":\"https://storage.googleapis.com/quants-images-prod/scantrader/upload/016dc8712e7400000607000000000000.png\",\"account\":{\"avatar\":\"https://storage.googleapis.com/quants-images-prod/scantrader/upload/016df6e29e980000060b000000000000.png\",\"identity\":\"016d9597cb8a000005e9000000000000\",\"name\":{\"nick\":\"我是金錢爆「速效錠」\",\"real\":\"\"},\"serial\":77340,\"kind\":\"personal\",\"ownRoles\":{\"admin\":[],\"contentFreeCreator\":[],\"contentFreeEditor\":[],\"contentPaidCreator\":[],\"contentPaidEditor\":[],\"contentPaidViewer\":[],\"contentComment\":[],\"contentAdmin\":[\"0167d194e4ef00001b0b000000000000\",\"017371a9e9c8000048a9000000000000\",\"0189b0a31114000005f1000000000000\"],\"accountant\":[],\"userList\":[]},\"service\":true},\"title\":\"我是金錢爆【加強錠】\",\"content\":\"<p>原價1988/月</p><p>鐵粉專案499/月</p><p>即刻開始，名額有限！</p><p><br></p><p>跨界傳奇，高規格影音製作！</p><p>華人唯一，專家、達人、分析師三位一體！</p><p>一次訂閱，三倍服務！</p><p>&nbsp;</p><p>開盤日每日全新影音</p><p>解析股市脈動，檢討今天、錢進明天！</p>\",\"published\":1571630400000,\"price\":499,\"unitWord\":\"\",\"identity\":\"016dc8712fd500000607000000000000\",\"categories\":[],\"convertAutoRenewalToSingle\":true,\"offShelf\":true,\"outsideUrl\":\"\",\"subscriptions\":0}},{\"type\":\"channel\",\"id\":\"016decae7501000059b4000000000000\",\"attributes\":{\"trial\":{\"time\":0,\"price\":0},\"hidden\":{\"subscriptions\":true,\"list\":true},\"apply\":1571633891955,\"autoRenewal\":1,\"expired\":null,\"maximum\":-1,\"enabled\":false,\"cover\":\"\",\"account\":{\"avatar\":\"https://storage.googleapis.com/quants-images-prod/scantrader/upload/016df6e29e980000060b000000000000.png\",\"identity\":\"016d9597cb8a000005e9000000000000\",\"name\":{\"nick\":\"我是金錢爆「速效錠」\",\"real\":\"\"},\"serial\":77340,\"kind\":\"personal\",\"ownRoles\":{\"admin\":[],\"contentFreeCreator\":[],\"contentFreeEditor\":[],\"contentPaidCreator\":[],\"contentPaidEditor\":[],\"contentPaidViewer\":[],\"contentComment\":[],\"contentAdmin\":[\"0167d1"
+      }
+    },
+    {
+      "time": 1782453655068,
+      "method": "GET",
+      "url": "https://api.scantrader.com/social/comments?query=eyJmaWx0ZXIiOlt7ImZpZWxkIjoic3RhdHVzLmRlbGV0ZWQiLCJ2YWx1ZSI6bnVsbCwib3BlcmF0b3IiOiI9IiwibG9naWMiOjB9LHsiZmllbGQiOiJraW5kIiwib3BlcmF0b3IiOiI9IiwidmFsdWUiOiJhcnRpY2xlIiwibG9naWMiOjB9LHsiZmllbGQiOiJpbmRleCIsIm9wZXJhdG9yIjoiPSIsInZhbHVlIjoiMDE5ZWZlMTAyMWIzMDAwMDEyMmNkZDAwMDAwMDAwMDAwMCIsImxvZ2ljIjowfV0sInBhZ2UiOnsibGltaXQiOjUwLCJvZmZzZXQiOjB9LCJzb3J0Ijp7InN0YXR1cy5jcmVhdGVkIjotMX0sImZpZWxkcyI6WyJpZGVudGl0eSIsImNvbnRlbnQiLCJpbWFnZSIsInJlcGxpZXMiLCJsaWtlcyIsImFjY291bnQuaWRlbnRpdHkiLCJhY2NvdW50LnNlcmlhbCIsImFjY291bnQua2luZCIsImFjY291bnQub3JnYW5pemF0aW9uLmtpbmQiLCJhY2NvdW50Lm9yZ2FuaXphdGlvbi5hbGlhcyIsImFjY291bnQuYXZhdGFyIiwiYWNjb3VudC5uYW1lIiwiYWNjb3VudC5zZXJ2aWNlIiwiYWNjb3VudC5vd25Sb2xlcyIsImFjY291bnQuYmVsb25nT3JnIiwiYWNjb3VudC5iZWxvbmdPcmdJbmZvIiwic3RhdHVzLmNyZWF0ZWQiXX0%3D",
+      "type": "xhr",
+      "response": {
+        "status": 200,
+        "ct": "application/json; charset=utf-8",
+        "body": "{\"data\":[{\"type\":\"comment\",\"id\":\"019efe516db30000122cdd000000000000\",\"attributes\":{\"replies\":1,\"likes\":0,\"status\":{\"created\":1782383209907},\"account\":{\"name\":{\"real\":\"\",\"nick\":\"chueh\"},\"avatar\":\"https://storage.googleapis.com/quants-images-prod/quants-images-prod/share_h5-images/user-picture/U4d6157b30bbecaf3d49c40f004aa4781.jpg\",\"ownRoles\":{\"admin\":[],\"contentFreeCreator\":[],\"contentFreeEditor\":[],\"contentPaidCreator\":[],\"contentPaidEditor\":[],\"contentPaidViewer\":[],\"contentComment\":[],\"contentAdmin\":[],\"accountant\":[],\"userList\":[]},\"kind\":\"personal\",\"belongOrg\":null,\"identity\":\"01842e4fb601000005de000000000000\",\"serial\":359904,\"service\":false},\"content\":\"是德微嗎？\",\"identity\":\"019efe516db30000122cdd000000000000\"}},{\"type\":\"comment\",\"id\":\"019efe1d4dd60000122cdd000000000000\",\"attributes\":{\"replies\":0,\"likes\":0,\"status\":{\"created\":1782379793877},\"account\":{\"avatar\":\"https://storage.googleapis.com/quants-images-prod/scantrader/upload/016df6e29e980000060b000000000000.png\",\"identity\":\"016d9597cb8a000005e9000000000000\",\"name\":{\"nick\":\"我是金錢爆「速效錠」\",\"real\":\"\"},\"serial\":77340,\"kind\":\"personal\",\"ownRoles\":{\"admin\":[],\"contentFreeCreator\":[],\"contentFreeEditor\":[],\"contentPaidCreator\":[],\"contentPaidEditor\":[],\"contentPaidViewer\":[],\"contentComment\":[],\"contentAdmin\":[\"0167d194e4ef00001b0b000000000000\",\"017371a9e9c8000048a9000000000000\",\"0189b0a31114000005f1000000000000\"],\"accountant\":[],\"userList\":[]},\"service\":true},\"content\":\"📢【我是金錢爆長效錠】\\n🔥阿斯匹靈/阿哥桃甲步【轉折篇】上架了！\\n🔥想跟著阿哥學習的朋友\\n訂購傳送門👉 https://bit.ly/4kq9rFp\\n\\n-------------------------------------------\\n📢【我是金錢爆長效錠】\\n🔥廖祿民(廖帥)/股市只要六堂課就變帥/上篇/下篇同步開課\\n🔥想跟著廖帥學習的朋友，快點連結訂閱\\n找廖帥傳送門👉 https://bit.ly/3LeHxQv\",\"identity\":\"019efe1d4dd60000122cdd000000000000\"}},{\"type\":\"comment\",\"id\":\"019efe1d0cec0000122cdd000000000000\",\"attributes\":{\"replies\":0,\"likes\":0,\"status\":{\"created\":1782379777259},\"account\":{\"avatar\":\"https://storage.googleapis.com/quants-images-prod/scantrader/upload/016df6e29e980000060b000000000000.png\",\"identity\":\"016d9597cb8"
+      }
+    },
+    {
+      "time": 1782453655068,
+      "method": "GET",
+      "url": "https://api.scantrader.com/social/promote?query=eyJmaWx0ZXIiOlt7ImZpZWxkIjoic3RhdHVzLmRlbGV0ZWQiLCJvcGVyYXRvciI6Ij0iLCJ2YWx1ZSI6bnVsbCwibG9naWMiOjB9LHsiZmllbGQiOiJraW5kIiwib3BlcmF0b3IiOiI9IiwidmFsdWUiOiJhcnRpY2xlQmFubmVyIiwibG9naWMiOjB9LHsiZmllbGQiOiJzdGFydCIsInZhbHVlIjoibm93VGltZXN0YW1wIiwib3BlcmF0b3IiOiI8PSIsImxvZ2ljIjowfSx7ImZpZWxkIjoiZW5kIiwidmFsdWUiOiJub3dUaW1lc3RhbXAiLCJvcGVyYXRvciI6Ij49IiwibG9naWMiOjB9XSwiZmllbGRzIjpbImlkZW50aXR5IiwiaW1hZ2UiLCJpc0ludGVybmFsTGluayIsImxpbmsiLCJwcm92aWRlck5hbWUiLCJsaW1pdGVkQnlTZXJ2aWNlQWNjb3VudHMiLCJzdGFydCJdLCJzb3J0Ijp7InJhbmRvbSI6MX19",
+      "type": "xhr",
+      "response": {
+        "status": 200,
+        "ct": "application/json; charset=utf-8",
+        "body": "{\"data\":{\"type\":\"advertisement\",\"id\":null,\"attributes\":{\"identity\":null}}}"
+      }
+    },
+    {
+      "time": 1782453655081,
+      "method": "GET",
+      "url": "https://storage.googleapis.com/quants-images-prod/scantrader/upload/016df6e29e980000060b000000000000.png",
+      "type": "image"
+    },
+    {
+      "time": 1782453655176,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/62.612b470a521d3840207b.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453655178,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/73.f98e0d47a34c4545e2c3.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453655178,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/59.c86903b348467ed53b75.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453655178,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/84.04576a6b5946e63be4d4.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453655178,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/71.28a4d9891ff7cbf50b00.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453655179,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/1.c0f37b5ae002f0dd58a1.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453655179,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/6.0e4873512b80bed009d9.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453655179,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/112.d58b3cfdbe4b4ed09a2e.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453655179,
+      "method": "GET",
+      "url": "https://scantrader.com/_nuxt/117.15e6422de38556a37b7a.v2.17.8.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453655439,
+      "method": "GET",
+      "url": "https://www.youtube.com/s/player/5b27766f/www-player.css",
+      "type": "stylesheet"
+    },
+    {
+      "time": 1782453655440,
+      "method": "GET",
+      "url": "https://www.youtube.com/s/_/ytembeds/_/ss/k=ytembeds.base.ArHmYVwpRfk.L.W.O/am=AAAAIA/d=0/br=1/rs=AGKMywGyn9Gm9dymF2Isf4-zS86vi92fcw",
+      "type": "stylesheet"
+    },
+    {
+      "time": 1782453655635,
+      "method": "GET",
+      "url": "https://www.youtube.com/s/_/ytembeds/_/js/k=ytembeds.base.en_US.fYor46R4v0I.2021.O/am=AAAAIA/d=1/br=1/rs=AGKMywEJ167WEJBS-XLnXGpl53Lyja-SmQ/m=root,base",
+      "type": "script"
+    },
+    {
+      "time": 1782453655635,
+      "method": "GET",
+      "url": "https://www.youtube.com/s/player/5b27766f/player_embed_es6.vflset/zh_TW/base.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453655778,
+      "method": "GET",
+      "url": "https://storage.googleapis.com/quants-images-prod/quants-images-prod/share_h5-images/user-picture/U4d6157b30bbecaf3d49c40f004aa4781.jpg",
+      "type": "image"
+    },
+    {
+      "time": 1782453655784,
+      "method": "GET",
+      "url": "https://api.scantrader.com/social/subscription?query=eyJmaWx0ZXIiOlt7ImZpZWxkIjoic3RhdHVzLmRlbGV0ZWQiLCJ2YWx1ZSI6bnVsbCwib3BlcmF0b3IiOiI9IiwibG9naWMiOjB9LHsiZmllbGQiOiJhY2NvdW50IiwidmFsdWUiOiIwMTY3YzZlZjI2ZDEwMDAwMGJiZTAwMDAwMDAwMDAwMCIsIm9wZXJhdG9yIjoiPSIsImxvZ2ljIjowfSx7ImZpZWxkIjoiY2hhbm5lbCIsInZhbHVlIjoiMDE4YTQ1MzZlMjUxMDAwMDNlYjQwMDAwMDAwMDAwMDAiLCJvcGVyYXRvciI6Ij0iLCJsb2dpYyI6MH0seyJmaWVsZCI6ImV4cGlyZWQiLCJ2YWx1ZSI6MTc4MjQ1MzY1NTc4Miwib3BlcmF0b3IiOiI%2BPSIsImxvZ2ljIjowfV19",
+      "type": "xhr",
+      "response": {
+        "status": 200,
+        "ct": "application/json; charset=utf-8",
+        "body": "{\"data\":{\"type\":\"subscription\",\"id\":\"019e5e24c40e0000122cdd000000000000\",\"attributes\":{\"status\":{\"deleted\":null,\"created\":1779695928334,\"updated\":1782317227971},\"transaction\":[\"2b40669a-046c-42ed-9561-99e07b63c28a\",\"f6b0dfd5-79a1-4099-b53d-8a780d5286e9\"],\"trial\":null,\"account\":\"0167c6ef26d100000bbe000000000000\",\"channel\":\"018a4536e25100003eb4000000000000\",\"traded\":1782317227000,\"expired\":1784919600000,\"startedAt\":1779695928000,\"identity\":\"019e5e24c40e0000122cdd000000000000\",\"__v\":1}}}"
+      }
+    },
+    {
+      "time": 1782453655784,
+      "method": "GET",
+      "url": "https://api.scantrader.com/social/collection?query=eyJmaWx0ZXIiOlt7ImZpZWxkIjoic3RhdHVzLmRlbGV0ZWQiLCJvcGVyYXRvciI6Ij0iLCJ2YWx1ZSI6bnVsbCwibG9naWMiOjB9LHsiZmllbGQiOiJhY2NvdW50Iiwib3BlcmF0b3IiOiI9IiwidmFsdWUiOiIwMTY3YzZlZjI2ZDEwMDAwMGJiZTAwMDAwMDAwMDAwMCIsImxvZ2ljIjowfSx7ImZpZWxkIjoia2luZCIsIm9wZXJhdG9yIjoiPSIsInZhbHVlIjoiY2hhbm5lbCIsImxvZ2ljIjowfSx7ImZpZWxkIjoiaW5kZXgiLCJvcGVyYXRvciI6Ij0iLCJ2YWx1ZSI6IjAxOGE0NTM2ZTI1MTAwMDAzZWI0MDAwMDAwMDAwMDAwIiwibG9naWMiOjB9XSwiZmllbGRzIjpbImlkZW50aXR5IiwiYWNjb3VudC5pZGVudGl0eSIsImFjY291bnQuc2VyaWFsIiwia2luZCIsImluZGV4Il19",
+      "type": "xhr",
+      "response": {
+        "status": 200,
+        "ct": "application/json; charset=utf-8",
+        "body": "{\"data\":{\"type\":\"collection\",\"id\":null,\"attributes\":null}}"
+      }
+    },
+    {
+      "time": 1782453656995,
+      "method": "GET",
+      "url": "https://entitlements.jwplayer.com/GK+l8JpIEeqF8F4KPP9BTA.json",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453656996,
+      "method": "GET",
+      "url": "https://ssl.p.jwpcdn.com/player/v/8.49.3/jwpsrv.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453656996,
+      "method": "GET",
+      "url": "https://ssl.p.jwpcdn.com/player/v/8.49.3/gapro.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453656996,
+      "method": "GET",
+      "url": "https://ssl.p.jwpcdn.com/player/v/8.49.3/jwplayer.core.controls.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453656996,
+      "method": "GET",
+      "url": "https://cdn.jwplayer.com/v2/sites/Rewf9vDu/media/gLtu4uZd/playback.json?recommendations_playlist_id=bH402Uzm&token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWNvbW1lbmRhdGlvbnNfcGxheWxpc3RfaWQiOiJiSDQwMlV6bSIsInJlc291cmNlIjoiL3YyL3NpdGVzL1Jld2Y5dkR1L21lZGlhL2dMdHU0dVpkL3BsYXliYWNrLmpzb24iLCJleHAiOjE3ODI0NTQwODB9.aJFSalu5lzQJR9YN2FevQNLeMcxp_Cbero2LHbUjlEg",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453656996,
+      "method": "GET",
+      "url": "https://ssl.p.jwpcdn.com/player/v/8.49.3/translations/zh-tw.json",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453657774,
+      "method": "GET",
+      "url": "https://ssl.p.jwpcdn.com/player/v/8.49.3/provider.hlsjs.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453657784,
+      "method": "GET",
+      "url": "https://googleads.g.doubleclick.net/pagead/id",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453657784,
+      "method": "GET",
+      "url": "https://static.doubleclick.net/instream/ad_status.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453657784,
+      "method": "GET",
+      "url": "https://www.youtube.com/s/_/ytembeds/_/js/k=ytembeds.base.en_US.fYor46R4v0I.2021.O/am=AAAAIA/d=1/exm=base,root/ed=1/br=1/rs=AGKMywEJ167WEJBS-XLnXGpl53Lyja-SmQ/m=r78Drb",
+      "type": "script"
+    },
+    {
+      "time": 1782453658276,
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
+      "type": "font"
+    },
+    {
+      "time": 1782453658276,
+      "method": "GET",
+      "url": "https://i.ytimg.com/vi/CBX8sHzY41k/maxresdefault.jpg",
+      "type": "image"
+    },
+    {
+      "time": 1782453658296,
+      "method": "GET",
+      "url": "https://www.google.com/js/th/mgWi-v0llvQATRICeM5vcCzU2Hg2w9kgBkYKiTFQ4gg.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453658321,
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-38XL2ZFWWH&gtm=45je66o1v890121657z8850038441za200zd890121657&_p=1782453653162&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAACAGQC&are=1&cid=390917951.1782447725&frm=0&pscdl=noapi&rcb=10&sr=1280x720&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uam=&uamb=0&uap=Windows&uapv=19.0.0&uaw=0&ul=zh-tw&gaf=2&_s=3&tag_exp=115616986~115938466~115938469~118395335~119027224~119576891~119576895&sid=1782453644&sct=2&seg=1&dl=https%3A%2F%2Fscantrader.com%2Farticle%2F019efe1021b30000122cdd000000000000&dt=%E3%80%90%E5%8A%A0%E5%BC%B7%E9%8C%A0%E3%80%91%23%E8%B2%A1%E7%B6%93V%E6%80%AA%E5%AE%A2(%E9%A6%AE%E6%B3%89%E5%AF%8C)%20%23%E9%BB%83%E5%95%9F%E4%B9%99%E3%80%8A%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8B2026.0625%20%E7%A9%BA%E6%96%B9%E9%8C%AF%E9%81%8E%E4%B8%80%E6%93%8A%E5%BF%85%E6%AE%BA%E6%A9%9F%E6%9C%83%EF%BC%9F%E5%8D%8A%E5%B0%8E%E9%AB%9460%25%E4%B9%96%E9%9B%A2%E4%BF%AE%E6%AD%A3%E8%AD%A6%E5%A0%B1%E6%9C%AA%E8%A7%A3%E9%99%A4%EF%BC%81%E5%B0%8F%E5%BF%83%E6%80%A5%E6%AE%BA%E5%9B%9E%E9%A6%AC%E6%A7%8D%EF%BC%9F(%E5%BD%B1%E7%89%87)%20-%20%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8C%E9%80%9F%E6%95%88%E9%8C%A0%E3%80%8D%20%7C%20%E5%BE%AE%E8%82%A1%E5%8A%9B%20ScanTrader&en=page_view&_et=1&tfd=7537",
+      "type": "fetch"
+    },
+    {
+      "time": 1782453658459,
+      "method": "GET",
+      "url": "https://googleads.g.doubleclick.net/pagead/id?slf_rd=1",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453658746,
+      "method": "GET",
+      "url": "https://www.youtube.com/generate_204?KmmEjw",
+      "type": "image"
+    },
+    {
+      "time": 1782453658773,
+      "method": "GET",
+      "url": "https://assets-jpcust.jwpsrv.com/watermarks/4yrasvtF.png",
+      "type": "image"
+    },
+    {
+      "time": 1782453658773,
+      "method": "GET",
+      "url": "https://cdn.jwplayer.com/strips/gLtu4uZd-120.vtt",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453658774,
+      "method": "GET",
+      "url": "https://ssl.p.jwpcdn.com/player/v/8.49.3/provider.cast.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453658775,
+      "method": "GET",
+      "url": "https://ssl.p.jwpcdn.com/player/v/8.49.3/related.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453658775,
+      "method": "GET",
+      "url": "https://cdn.jwplayer.com/manifests/gLtu4uZd.m3u8?exp=1782454080&sig=f6d87d5183cf9dcc20a0c01dfef3db28",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453658775,
+      "method": "GET",
+      "url": "https://cdn.jwplayer.com/v2/media/gLtu4uZd/poster.jpg?width=720",
+      "type": "image"
+    },
+    {
+      "time": 1782453658779,
+      "method": "GET",
+      "url": "https://cdn.jwplayer.com/v2/media/gLtu4uZd/poster.mp4?width=640",
+      "type": "media"
+    },
+    {
+      "time": 1782453658797,
+      "method": "POST",
+      "url": "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453659011,
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-14S2HP5QQZ&gtm=45je66o1v9125644512za20g&_p=1782453653162&gcd=13l3l3l3l2l1&npa=0&dma=0&_eu=EBAIAGQ&are=1&cid=390917951.1782447725&frm=0&ir=1&pscdl=noapi&rcb=17&sr=1280x720&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uam=&uamb=0&uap=Windows&uapv=19.0.0&uaw=0&ul=zh-tw&gaf=2&tag_exp=115938466~115938468~119027224~119576891~119576895&dl=https%3A%2F%2Fscantrader.com%2Farticle%2F019efe1021b30000122cdd000000000000&dt=%E3%80%90%E5%8A%A0%E5%BC%B7%E9%8C%A0%E3%80%91%23%E8%B2%A1%E7%B6%93V%E6%80%AA%E5%AE%A2(%E9%A6%AE%E6%B3%89%E5%AF%8C)%20%23%E9%BB%83%E5%95%9F%E4%B9%99%E3%80%8A%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8B2026.0625%20%E7%A9%BA%E6%96%B9%E9%8C%AF%E9%81%8E%E4%B8%80%E6%93%8A%E5%BF%85%E6%AE%BA%E6%A9%9F%E6%9C%83%EF%BC%9F%E5%8D%8A%E5%B0%8E%E9%AB%9460%25%E4%B9%96%E9%9B%A2%E4%BF%AE%E6%AD%A3%E8%AD%A6%E5%A0%B1%E6%9C%AA%E8%A7%A3%E9%99%A4%EF%BC%81%E5%B0%8F%E5%BF%83%E6%80%A5%E6%AE%BA%E5%9B%9E%E9%A6%AC%E6%A7%8D%EF%BC%9F(%E5%BD%B1%E7%89%87)%20-%20%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8C%E9%80%9F%E6%95%88%E9%8C%A0%E3%80%8D%20%7C%20%E5%BE%AE%E8%82%A1%E5%8A%9B%20ScanTrader&sid=1782453645&sct=2&seg=1&_tu=wAQ&_s=1&tfd=8227",
+      "type": "fetch"
+    },
+    {
+      "time": 1782453659064,
+      "method": "GET",
+      "url": "https://assets-jpcust.jwpsrv.com/strips/gLtu4uZd-120.vtt",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453659077,
+      "method": "GET",
+      "url": "https://assets-jpcust.jwpsrv.com/thumbnails/2z1gkme4-720.jpg",
+      "type": "image"
+    },
+    {
+      "time": 1782453659089,
+      "method": "GET",
+      "url": "https://videos-cloudfront-usp.jwpsrv.com/6a3ec025_eb60af36fac66589986c49d60bf96b8a04b63316/sites/Rewf9vDu/media/gLtu4uZd/versions/gLtu4uZd/manifest.ism/manifest-audio_0_hIkP1nis_UFndhJAC=112001-video_0_hIkP1nis_zSKJDoMy=215745.m3u8",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453659266,
+      "method": "GET",
+      "url": "https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1",
+      "type": "script"
+    },
+    {
+      "time": 1782453660054,
+      "method": "GET",
+      "url": "https://videos-cloudfront-usp.jwpsrv.com/6a3ec025_eb60af36fac66589986c49d60bf96b8a04b63316/sites/Rewf9vDu/media/gLtu4uZd/versions/gLtu4uZd/manifest.ism/manifest-audio_0_hIkP1nis_UFndhJAC=112001-video_0_hIkP1nis_zSKJDoMy=215745-1.ts",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453660078,
+      "method": "GET",
+      "url": "https://cdn.jwplayer.com/strips/gLtu4uZd-120.jpg",
+      "type": "image"
+    },
+    {
+      "time": 1782453660359,
+      "method": "GET",
+      "url": "https://www.gstatic.com/cast/sdk/libs/sender/1.0/cast_framework.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453660359,
+      "method": "GET",
+      "url": "https://www.gstatic.com/eureka/clank/149/cast_sender.js",
+      "type": "script"
+    },
+    {
+      "time": 1782453660473,
+      "method": "GET",
+      "url": "https://assets-jpcust.jwpsrv.com/strips/gLtu4uZd-120.jpg",
+      "type": "image"
+    },
+    {
+      "time": 1782453660639,
+      "method": "GET",
+      "url": "blob:https://scantrader.com/1f5a5c96-24f8-4e03-9d61-436bbf6206c6",
+      "type": "script"
+    },
+    {
+      "time": 1782453660680,
+      "method": "GET",
+      "url": "https://videos-cloudfront-usp.jwpsrv.com/6a3ec025_eb60af36fac66589986c49d60bf96b8a04b63316/sites/Rewf9vDu/media/gLtu4uZd/versions/gLtu4uZd/manifest.ism/manifest-audio_0_hIkP1nis_UFndhJAC=112001-video_0_hIkP1nis_zSKJDoMy=215745-2.ts",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453660751,
+      "method": "GET",
+      "url": "https://cdn.jwplayer.com/v2/media/gLtu4uZd/poster.jpg?width=720",
+      "type": "other"
+    },
+    {
+      "time": 1782453660752,
+      "method": "GET",
+      "url": "https://cdn.jwplayer.com/v2/media/gLtu4uZd/poster.jpg?width=720",
+      "type": "other"
+    },
+    {
+      "time": 1782453660752,
+      "method": "GET",
+      "url": "https://assets-jpcust.jwpsrv.com/thumbnails/2z1gkme4-720.jpg",
+      "type": "other"
+    },
+    {
+      "time": 1782453660753,
+      "method": "GET",
+      "url": "https://assets-jpcust.jwpsrv.com/thumbnails/2z1gkme4-720.jpg",
+      "type": "other"
+    },
+    {
+      "time": 1782453661080,
+      "method": "GET",
+      "url": "https://videos-cloudfront-usp.jwpsrv.com/6a3ec025_eb60af36fac66589986c49d60bf96b8a04b63316/sites/Rewf9vDu/media/gLtu4uZd/versions/gLtu4uZd/manifest.ism/manifest-audio_0_hIkP1nis_UFndhJAC=112001-video_0_hIkP1nis_zSKJDoMy=1345831.m3u8",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453661143,
+      "method": "GET",
+      "url": "https://videos-cloudfront-usp.jwpsrv.com/6a3ec025_eb60af36fac66589986c49d60bf96b8a04b63316/sites/Rewf9vDu/media/gLtu4uZd/versions/gLtu4uZd/manifest.ism/manifest-audio_0_hIkP1nis_UFndhJAC=112001-video_0_hIkP1nis_zSKJDoMy=1345831-3.ts",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453661774,
+      "method": "POST",
+      "url": "https://www.youtube.com/youtubei/v1/log_event?alt=json",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453662415,
+      "method": "GET",
+      "url": "https://prd.jwpltx.com/v1/jwplayer6/ping.gif?h=44431384&e=e&n=0319989280484946&aid=GK%2Bl8JpIEeqF8F4KPP9BTA&amp=0&at=1&c=-1&ccp=0&cp=0&d=0&eb=0&ed=6&emi=yfmlcd12xu91&et=classic&i=0&id=gLtu4uZd&lid=tbcks1p96rcz&lsa=set&mt=0&pbd=1&pbr=1&pgi=14a9fsgj53lg&ph=3&pid=6NOACgRr&pii=0&pl=386&plc=1&pli=pojdfp18obd8&pp=hlsjs&ppm=VOD&prc=1&ps=4&pss=1&pt=%E3%80%90%E5%8A%A0%E5%BC%B7%E9%8C%A0%E3%80%91%23%E8%B2%A1%E7%B6%93V%E6%80%AA%E5%AE%A2(%E9%A6%AE%E6%B3%89%E5%AF%8C)%20%23%E9%BB%83%E5%95%9F%E4%B9%99%E3%80%8A%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8B2026.0625%20%E7%A9%BA%E6%96%B9%E9%8C%AF%E9%81%8E%E4%B8%80%E6%93%8A%E5%BF%85%E6%AE%BA%E6%A9%9F%E6%9C%83%EF%BC%9F%E5%8D%8A%E5%B0%8E%E9%AB%9460%25%E4%B9%96%E9%9B%A2%E4%BF%AE%E6%AD%A3%E8%AD%A6%E5%A0%B1%E6%9C%AA%E8%A7%A3%E9%99%A4%EF%BC%81%E5%B0%8F%E5%BF%83%E6%80%A5%E6%AE%BA%E5%9B%9E%E9%A6%AC%E6%A7%8D%EF%BC%9F(%E5%BD%B1%E7%89%87)%20-%20%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8C%E9%80%9F%E6%95%88%E9%8C%A0%E3%80%8D%20%7C%20%E5%BE%AE%E8%82%A1%E5%8A%9B%20ScanTrader&pu=https%3A%2F%2Fscantrader.com%2Farticle%2F019efe1021b30000122cdd000000000000&pv=8.49.3&pyc=0&s=0&sdk=0&stc=1&stpe=0&t=production_019efe0823ea0000122cdd000000000000&tv=4.0.15&vb=1&vi=1&vl=90&wd=686&ab=1&cae=0&cb=1&cdid=botr_gLtu4uZd_6NOACgRr_div&cme=0&dd=0&flc=1&fv=&ga=1&mk=hls&mu=https%3A%2F%2Fcdn.jwplayer.com%2Fmanifests%2FgLtu4uZd.m3u8%3Fexp%3D1782454080%26sig%3Df6d87d5183cf9dcc20a0c01dfef3db28&pbc=1&pd=2&pdr=&plng=zh-TW&plt=8000&pni=1&po=0&pogt=%E3%80%90%E5%8A%A0%E5%BC%B7%E9%8C%A0%E3%80%91%23%E8%B2%A1%E7%B6%93V%E6%80%AA%E5%AE%A2(%E9%A6%AE%E6%B3%89%E5%AF%8C)%20%23%E9%BB%83%E5%95%9F%E4%B9%99%E3%80%8A%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8B2026.0625%20%E7%A9%BA%E6%96%B9%E9%8C%AF%E9%81%8E%E4%B8%80%E6%93%8A%E5%BF%85%E6%AE%BA%E6%A9%9F%E6%9C%83%EF%BC%9F%E5%8D%8A%E5%B0%8E%E9%AB%9460%25%E4%B9%96%E9%9B%A2%E4%BF%AE%E6%AD%A3%E8%AD%A6%E5%A0%B1%E6%9C%AA%E8%A7%A3%E9%99%A4%EF%BC%81%E5%B0%8F%E5%BF%83%E6%80%A5%E6%AE%BA%E5%9B%9E%E9%A6%AC%E6%A7%8D%EF%BC%9F(%E5%BD%B1%E7%89%87)%20-%20%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8C%E9%80%9F%E6%95%88%E9%8C%A0%E3%80%8D%20%7C%20%E5%BE%AE%E8%82%A1%E5%8A%9B%20ScanTrader&pvt=1&sn=%7B%22controlbar%22%3A%7B%22background%22%3A%22rgba(0%2C0%2C0%2C0)%22%2C%22icons%22%3A%22rgba(255%2C255%2C255%2C0.8)%22%2C%22iconsActive%22%3A%22%23FFFFFF%22%2C%22text%22%3A%22%23FFFFFF%22%7D%2C%22menus%22%3A%7B%22background%22%3A%22%23333333%22%2C%22text%22%3A%22rgba(255%2C255%2C255%2C0.8)%22%2C%22textActive%22%3A%22%23FFFFFF%22%7D%2C%22timeslider%22%3A%7B%22progress%22%3A%22%23EAB985%22%2C%22rail%22%3A%22rgba(255%2C255%2C255%2C0.3)%22%7D%2C%22tooltips%22%3A%7B%22background%22%3A%22%23FFFFFF%22%2C%22text%22%3A%22%23000000%22%7D%7D&sp=0&st=1780&sa=1782453658765",
+      "type": "image"
+    },
+    {
+      "time": 1782453662415,
+      "method": "GET",
+      "url": "https://prd.jwpltx.com/v1/jwplayer6/ping.gif?h=-1654629676&e=es&n=8879540573701326&aid=GK%2Bl8JpIEeqF8F4KPP9BTA&amp=0&at=1&c=-1&ccp=0&cp=0&d=0&eb=0&ed=6&emi=yfmlcd12xu91&et=classic&i=0&id=gLtu4uZd&lid=tbcks1p96rcz&lsa=set&mt=0&pbd=1&pbr=1&pgi=14a9fsgj53lg&ph=3&pid=6NOACgRr&pii=0&pl=386&plc=1&pli=pojdfp18obd8&pp=hlsjs&ppm=VOD&prc=1&ps=4&pss=1&pt=%E3%80%90%E5%8A%A0%E5%BC%B7%E9%8C%A0%E3%80%91%23%E8%B2%A1%E7%B6%93V%E6%80%AA%E5%AE%A2(%E9%A6%AE%E6%B3%89%E5%AF%8C)%20%23%E9%BB%83%E5%95%9F%E4%B9%99%E3%80%8A%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8B2026.0625%20%E7%A9%BA%E6%96%B9%E9%8C%AF%E9%81%8E%E4%B8%80%E6%93%8A%E5%BF%85%E6%AE%BA%E6%A9%9F%E6%9C%83%EF%BC%9F%E5%8D%8A%E5%B0%8E%E9%AB%9460%25%E4%B9%96%E9%9B%A2%E4%BF%AE%E6%AD%A3%E8%AD%A6%E5%A0%B1%E6%9C%AA%E8%A7%A3%E9%99%A4%EF%BC%81%E5%B0%8F%E5%BF%83%E6%80%A5%E6%AE%BA%E5%9B%9E%E9%A6%AC%E6%A7%8D%EF%BC%9F(%E5%BD%B1%E7%89%87)%20-%20%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8C%E9%80%9F%E6%95%88%E9%8C%A0%E3%80%8D%20%7C%20%E5%BE%AE%E8%82%A1%E5%8A%9B%20ScanTrader&pu=https%3A%2F%2Fscantrader.com%2Farticle%2F019efe1021b30000122cdd000000000000&pv=8.49.3&pyc=0&s=0&sdk=0&stc=1&stpe=0&t=production_019efe0823ea0000122cdd000000000000&tv=4.0.15&vb=1&vi=1&vl=90&wd=686&sa=1782453658765",
+      "type": "image"
+    },
+    {
+      "time": 1782453662415,
+      "method": "GET",
+      "url": "https://prd.jwpltx.com/v1/jwplayer6/ping.gif?h=-883765912&e=pa&n=0041277492667456&aid=GK%2Bl8JpIEeqF8F4KPP9BTA&amp=0&at=1&c=-1&ccp=0&cp=0&d=0&eb=0&ed=6&emi=yfmlcd12xu91&et=classic&i=0&id=gLtu4uZd&lid=tbcks1p96rcz&lsa=set&mt=0&pbd=1&pbr=1&pgi=14a9fsgj53lg&ph=3&pid=6NOACgRr&pii=0&pl=386&plc=1&pli=pojdfp18obd8&pp=hlsjs&ppm=VOD&prc=1&ps=4&pss=1&pt=%E3%80%90%E5%8A%A0%E5%BC%B7%E9%8C%A0%E3%80%91%23%E8%B2%A1%E7%B6%93V%E6%80%AA%E5%AE%A2(%E9%A6%AE%E6%B3%89%E5%AF%8C)%20%23%E9%BB%83%E5%95%9F%E4%B9%99%E3%80%8A%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8B2026.0625%20%E7%A9%BA%E6%96%B9%E9%8C%AF%E9%81%8E%E4%B8%80%E6%93%8A%E5%BF%85%E6%AE%BA%E6%A9%9F%E6%9C%83%EF%BC%9F%E5%8D%8A%E5%B0%8E%E9%AB%9460%25%E4%B9%96%E9%9B%A2%E4%BF%AE%E6%AD%A3%E8%AD%A6%E5%A0%B1%E6%9C%AA%E8%A7%A3%E9%99%A4%EF%BC%81%E5%B0%8F%E5%BF%83%E6%80%A5%E6%AE%BA%E5%9B%9E%E9%A6%AC%E6%A7%8D%EF%BC%9F(%E5%BD%B1%E7%89%87)%20-%20%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8C%E9%80%9F%E6%95%88%E9%8C%A0%E3%80%8D%20%7C%20%E5%BE%AE%E8%82%A1%E5%8A%9B%20ScanTrader&pu=https%3A%2F%2Fscantrader.com%2Farticle%2F019efe1021b30000122cdd000000000000&pv=8.49.3&pyc=0&s=0&sdk=0&stc=1&stpe=0&t=production_019efe0823ea0000122cdd000000000000&tv=4.0.15&vb=1&vi=1&vl=90&wd=686&ab=1&bwe=500&cme=0&flc=1&mu=https%3A%2F%2Fcdn.jwplayer.com%2Fmanifests%2FgLtu4uZd.m3u8%3Fexp%3D1782454080%26sig%3Df6d87d5183cf9dcc20a0c01dfef3db28&pd=2&pdr=&plng=zh-TW&pni=1&pogt=%E3%80%90%E5%8A%A0%E5%BC%B7%E9%8C%A0%E3%80%91%23%E8%B2%A1%E7%B6%93V%E6%80%AA%E5%AE%A2(%E9%A6%AE%E6%B3%89%E5%AF%8C)%20%23%E9%BB%83%E5%95%9F%E4%B9%99%E3%80%8A%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8B2026.0625%20%E7%A9%BA%E6%96%B9%E9%8C%AF%E9%81%8E%E4%B8%80%E6%93%8A%E5%BF%85%E6%AE%BA%E6%A9%9F%E6%9C%83%EF%BC%9F%E5%8D%8A%E5%B0%8E%E9%AB%9460%25%E4%B9%96%E9%9B%A2%E4%BF%AE%E6%AD%A3%E8%AD%A6%E5%A0%B1%E6%9C%AA%E8%A7%A3%E9%99%A4%EF%BC%81%E5%B0%8F%E5%BF%83%E6%80%A5%E6%AE%BA%E5%9B%9E%E9%A6%AC%E6%A7%8D%EF%BC%9F(%E5%BD%B1%E7%89%87)%20-%20%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8C%E9%80%9F%E6%95%88%E9%8C%A0%E3%80%8D%20%7C%20%E5%BE%AE%E8%82%A1%E5%8A%9B%20ScanTrader&pr=1&tb=0&vd=2076&sa=1782453660037",
+      "type": "image"
+    },
+    {
+      "time": 1782453662416,
+      "method": "GET",
+      "url": "https://prd.jwpltx.com/v1/jwplayer6/ping.gif?h=958061023&e=s&n=6900961373748661&aid=GK%2Bl8JpIEeqF8F4KPP9BTA&amp=0&at=1&c=-1&ccp=0&cp=0&d=0&eb=0&ed=6&emi=yfmlcd12xu91&et=classic&i=0&id=gLtu4uZd&lid=tbcks1p96rcz&lsa=set&mt=0&pbd=1&pbr=1&pgi=14a9fsgj53lg&ph=3&pid=6NOACgRr&pii=0&pl=386&plc=1&pli=pojdfp18obd8&pp=hlsjs&ppm=VOD&prc=1&ps=4&pss=1&pt=%E3%80%90%E5%8A%A0%E5%BC%B7%E9%8C%A0%E3%80%91%23%E8%B2%A1%E7%B6%93V%E6%80%AA%E5%AE%A2(%E9%A6%AE%E6%B3%89%E5%AF%8C)%20%23%E9%BB%83%E5%95%9F%E4%B9%99%E3%80%8A%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8B2026.0625%20%E7%A9%BA%E6%96%B9%E9%8C%AF%E9%81%8E%E4%B8%80%E6%93%8A%E5%BF%85%E6%AE%BA%E6%A9%9F%E6%9C%83%EF%BC%9F%E5%8D%8A%E5%B0%8E%E9%AB%9460%25%E4%B9%96%E9%9B%A2%E4%BF%AE%E6%AD%A3%E8%AD%A6%E5%A0%B1%E6%9C%AA%E8%A7%A3%E9%99%A4%EF%BC%81%E5%B0%8F%E5%BF%83%E6%80%A5%E6%AE%BA%E5%9B%9E%E9%A6%AC%E6%A7%8D%EF%BC%9F(%E5%BD%B1%E7%89%87)%20-%20%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8C%E9%80%9F%E6%95%88%E9%8C%A0%E3%80%8D%20%7C%20%E5%BE%AE%E8%82%A1%E5%8A%9B%20ScanTrader&pu=https%3A%2F%2Fscantrader.com%2Farticle%2F019efe1021b30000122cdd000000000000&pv=8.49.3&pyc=1&s=0&sdk=0&stc=1&stpe=0&t=production_019efe0823ea0000122cdd000000000000&tv=4.0.15&vb=1&vi=1&vl=90&wd=686&abm=1&bwe=500&cae=0&cct=0&ch=2&cdid=botr_gLtu4uZd_6NOACgRr_div&drm=0&ff=710&fsm=0&l=4&mk=hls&mu=https%3A%2F%2Fcdn.jwplayer.com%2Fmanifests%2FgLtu4uZd.m3u8%3Fexp%3D1782454080%26sig%3Df6d87d5183cf9dcc20a0c01dfef3db28&pcp=0&pd=2&pdr=&plng=zh-TW&pni=1&pr=1&q=32&qcr=initial%20choice&sbr=340&sp=0&strt=710&tb=4&tt=1&vd=2076&vh=180&vs=5&vw=320&sa=1782453660746",
+      "type": "image"
+    },
+    {
+      "time": 1782453663041,
+      "method": "GET",
+      "url": "https://videos-cloudfront-usp.jwpsrv.com/6a3ec025_eb60af36fac66589986c49d60bf96b8a04b63316/sites/Rewf9vDu/media/gLtu4uZd/versions/gLtu4uZd/manifest.ism/manifest-audio_0_hIkP1nis_UFndhJAC=112001-video_0_hIkP1nis_zSKJDoMy=1345831-4.ts",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453664455,
+      "method": "GET",
+      "url": "https://videos-cloudfront-usp.jwpsrv.com/6a3ec025_eb60af36fac66589986c49d60bf96b8a04b63316/sites/Rewf9vDu/media/gLtu4uZd/versions/gLtu4uZd/manifest.ism/manifest-audio_0_hIkP1nis_UFndhJAC=112001-video_0_hIkP1nis_zSKJDoMy=1345831-5.ts",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453665041,
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-14S2HP5QQZ&gtm=45je66o1v9125644512za20g&_p=1782453653162&gcd=13l3l3l3l2l1&npa=0&dma=0&_eu=EBAIAGQ&are=1&cid=390917951.1782447725&frm=0&ir=1&pscdl=noapi&rcb=17&sr=1280x720&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uam=&uamb=0&uap=Windows&uapv=19.0.0&uaw=0&ul=zh-tw&gaf=2&tag_exp=115938466~115938468~119027224~119576891~119576895&dl=https%3A%2F%2Fscantrader.com%2Farticle%2F019efe1021b30000122cdd000000000000&dt=%E3%80%90%E5%8A%A0%E5%BC%B7%E9%8C%A0%E3%80%91%23%E8%B2%A1%E7%B6%93V%E6%80%AA%E5%AE%A2(%E9%A6%AE%E6%B3%89%E5%AF%8C)%20%23%E9%BB%83%E5%95%9F%E4%B9%99%E3%80%8A%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8B2026.0625%20%E7%A9%BA%E6%96%B9%E9%8C%AF%E9%81%8E%E4%B8%80%E6%93%8A%E5%BF%85%E6%AE%BA%E6%A9%9F%E6%9C%83%EF%BC%9F%E5%8D%8A%E5%B0%8E%E9%AB%9460%25%E4%B9%96%E9%9B%A2%E4%BF%AE%E6%AD%A3%E8%AD%A6%E5%A0%B1%E6%9C%AA%E8%A7%A3%E9%99%A4%EF%BC%81%E5%B0%8F%E5%BF%83%E6%80%A5%E6%AE%BA%E5%9B%9E%E9%A6%AC%E6%A7%8D%EF%BC%9F(%E5%BD%B1%E7%89%87)%20-%20%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8C%E9%80%9F%E6%95%88%E9%8C%A0%E3%80%8D%20%7C%20%E5%BE%AE%E8%82%A1%E5%8A%9B%20ScanTrader&sid=1782453645&sct=2&seg=1&_tu=wAQ&_s=2&tfd=14258",
+      "type": "fetch"
+    },
+    {
+      "time": 1782453665071,
+      "method": "POST",
+      "url": "https://analytics.google.com/g/collect?v=2&tid=G-38XL2ZFWWH&gtm=45je66o1v890121657z8850038441za200zd890121657&_p=1782453653162&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAGQC&are=1&cid=390917951.1782447725&frm=0&pscdl=noapi&rcb=10&sr=1280x720&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uam=&uamb=0&uap=Windows&uapv=19.0.0&uaw=0&ul=zh-tw&gaf=2&_s=4&tag_exp=115616986~115938466~115938469~118395335~119027224~119576891~119576895&sid=1782453644&sct=2&seg=1&dl=https%3A%2F%2Fscantrader.com%2Farticle%2F019efe1021b30000122cdd000000000000&dt=%E3%80%90%E5%8A%A0%E5%BC%B7%E9%8C%A0%E3%80%91%23%E8%B2%A1%E7%B6%93V%E6%80%AA%E5%AE%A2(%E9%A6%AE%E6%B3%89%E5%AF%8C)%20%23%E9%BB%83%E5%95%9F%E4%B9%99%E3%80%8A%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8B2026.0625%20%E7%A9%BA%E6%96%B9%E9%8C%AF%E9%81%8E%E4%B8%80%E6%93%8A%E5%BF%85%E6%AE%BA%E6%A9%9F%E6%9C%83%EF%BC%9F%E5%8D%8A%E5%B0%8E%E9%AB%9460%25%E4%B9%96%E9%9B%A2%E4%BF%AE%E6%AD%A3%E8%AD%A6%E5%A0%B1%E6%9C%AA%E8%A7%A3%E9%99%A4%EF%BC%81%E5%B0%8F%E5%BF%83%E6%80%A5%E6%AE%BA%E5%9B%9E%E9%A6%AC%E6%A7%8D%EF%BC%9F(%E5%BD%B1%E7%89%87)%20-%20%E6%88%91%E6%98%AF%E9%87%91%E9%8C%A2%E7%88%86%E3%80%8C%E9%80%9F%E6%95%88%E9%8C%A0%E3%80%8D%20%7C%20%E5%BE%AE%E8%82%A1%E5%8A%9B%20ScanTrader&_tu=wAQ&en=%E6%9C%AA%E5%88%86%E9%A1%9E%E9%BB%9E%E6%93%8A%E4%BA%8B%E4%BB%B6&ep.category=%E6%9C%AA%E5%88%86%E9%A1%9E%E9%BB%9E%E6%93%8A%E4%BA%8B%E4%BB%B6&_et=6737&tfd=14288",
+      "type": "fetch"
+    },
+    {
+      "time": 1782453665897,
+      "method": "GET",
+      "url": "https://videos-cloudfront-usp.jwpsrv.com/6a3ec025_eb60af36fac66589986c49d60bf96b8a04b63316/sites/Rewf9vDu/media/gLtu4uZd/versions/gLtu4uZd/manifest.ism/manifest-audio_0_hIkP1nis_UFndhJAC=112001-video_0_hIkP1nis_zSKJDoMy=1345831-6.ts",
+      "type": "xhr"
+    },
+    {
+      "time": 1782453667432,
+      "method": "GET",
+      "url": "https://videos-cloudfront-usp.jwpsrv.com/6a3ec025_eb60af36fac66589986c49d60bf96b8a04b63316/sites/Rewf9vDu/media/gLtu4uZd/versions/gLtu4uZd/manifest.ism/manifest-audio_0_hIkP1nis_UFndhJAC=112001-video_0_hIkP1nis_zSKJDoMy=1345831-7.ts",
+      "type": "xhr"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "download-scantrader",
+  "version": "1.0.0",
+  "description": "下載 scantrader.com 指定頻道的影片",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "install-browser": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "cli-progress": "^3.12.0",
+    "ffmpeg-static": "^5.3.0",
+    "fs-extra": "^11.2.0",
+    "playwright": "^1.44.0",
+    "readline-sync": "^1.4.10"
+  },
+  "allowScripts": {
+    "ffmpeg-static@5.3.0": true
+  }
+}

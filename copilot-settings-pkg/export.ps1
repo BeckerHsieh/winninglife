@@ -32,12 +32,18 @@ $src = "$CopilotDir\mcp-config.json"
 if (Test-Path $src) {
     $mcp = Get-Content $src -Raw | ConvertFrom-Json
 
+    $portableUserProfile = "%USERPROFILE%"
+
     # read actual values
     $apiKey = $mcp.mcpServers.firecrawl.env.FIRECRAWL_API_KEY
     $fsArgs = $mcp.mcpServers.filesystem.args
-    $d1 = if ($fsArgs.Count -ge 3) { $fsArgs[2] } else { "C:\Users\$env:USERNAME\Desktop" }
-    $d2 = if ($fsArgs.Count -ge 4) { $fsArgs[3] } else { "C:\Users\$env:USERNAME\Documents" }
-    $d3 = if ($fsArgs.Count -ge 5) { $fsArgs[4] } else { "C:\Users\$env:USERNAME\Downloads" }
+    $d1 = if ($fsArgs.Count -ge 3) { $fsArgs[2] } else { "$portableUserProfile\Desktop" }
+    $d2 = if ($fsArgs.Count -ge 4) { $fsArgs[3] } else { "$portableUserProfile\Documents" }
+    $d3 = if ($fsArgs.Count -ge 5) { $fsArgs[4] } else { "$portableUserProfile\Downloads" }
+
+    $d1 = $d1 -replace [Regex]::Escape($env:USERPROFILE), $portableUserProfile
+    $d2 = $d2 -replace [Regex]::Escape($env:USERPROFILE), $portableUserProfile
+    $d3 = $d3 -replace [Regex]::Escape($env:USERPROFILE), $portableUserProfile
 
     # replace values with placeholders directly on the object
     $mcp.mcpServers.firecrawl.env.FIRECRAWL_API_KEY = "PLACEHOLDER_FIRECRAWL_KEY"
