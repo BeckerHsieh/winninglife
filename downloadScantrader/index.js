@@ -94,22 +94,21 @@ const singleArticleUrl = singleArticleIdx !== -1 ? args[singleArticleIdx + 1] : 
 
     totalVideos += videoUrls.length;
 
-    for (let j = 0; j < videoUrls.length; j++) {
-      const videoUrl = videoUrls[j];
-      // 單一影片不加後綴；多個影片加 -1, -2, -3...
+    // 取得 cookies（一次即可，所有影片共用）
+    const cookies = await context.cookies();
+
+    // ── 並行下載同篇文章的所有影片（避免簽名 URL 過期）──────────────────────
+    const downloadTasks = videoUrls.map((videoUrl, j) => {
       const suffix = videoUrls.length > 1 ? `-${j + 1}` : '';
       const fileTitle = `${title}${suffix}`;
-      // 取得目前 session cookies，傳給下載器作認證
-      const cookies = await context.cookies();
-      const result = await downloadVideo(videoUrl, fileTitle, i + 1, cookies);
+      return downloadVideo(videoUrl, fileTitle, i + 1, cookies);
+    });
 
-      if (result.error) {
-        failed++;
-      } else if (result.skipped) {
-        skipped++;
-      } else {
-        downloaded++;
-      }
+    const results = await Promise.all(downloadTasks);
+    for (const result of results) {
+      if (result.error) failed++;
+      else if (result.skipped) skipped++;
+      else downloaded++;
     }
   }
 

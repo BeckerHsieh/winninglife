@@ -109,26 +109,40 @@ function downloadHls(url, filePath, cookieHeader) {
       ? `Cookie: ${cookieHeader}\r\nReferer: https://scantrader.com/\r\n`
       : null;
 
-    // 第一次嘗試：-map 0（包含所有音視訊 track）
-    const args1 = ['-y'];
-    if (headerStr) args1.push('-headers', headerStr);
-    args1.push('-i', url, '-map', '0', '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-movflags', '+faststart', filePath);
+    // 嘗試順序：針對 JWPlayer HLS 時間戳記問題（+igndts 忽略無效 DTS）
+    const attempts = [
+      // 1. 忽略無效 DTS + 修正時間戳記 + faststart
+      ['-y', '-fflags', '+discardcorrupt+genpts+igndts',
+        ...(headerStr ? ['-headers', headerStr] : []),
+        '-i', url, '-c', 'copy', '-avoid_negative_ts', 'make_non_negative',
+        '-max_interleave_delta', '0', '-movflags', '+faststart', filePath],
+      // 2. 同上但不加 faststart（避免二次 seek 失敗）
+      ['-y', '-fflags', '+discardcorrupt+genpts+igndts',
+        ...(headerStr ? ['-headers', headerStr] : []),
+        '-i', url, '-c', 'copy', '-avoid_negative_ts', 'make_non_negative',
+        '-max_interleave_delta', '0', filePath],
+      // 3. 重新編碼音視訊（最後手段，確保相容性）
+      ['-y', '-fflags', '+discardcorrupt+igndts',
+        ...(headerStr ? ['-headers', headerStr] : []),
+        '-i', url, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k',
+        '-max_interleave_delta', '0', filePath],
+    ];
 
-    execFile(ffmpegPath, args1, { timeout: 600000 }, (err1, _so1, se1) => {
-      if (!err1) { resolve(); return; }
-
-      // 第二次嘗試：不指定 map
-      const hint = se1.slice(-120).replace(/\s+/g, ' ').trim();
-      console.log(`    [ffmpeg] -map 0 失敗 (${hint})，嘗試不指定 map...`);
-      const args2 = ['-y'];
-      if (headerStr) args2.push('-headers', headerStr);
-      args2.push('-i', url, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', filePath);
-
-      execFile(ffmpegPath, args2, { timeout: 600000 }, (err2, _so2, se2) => {
-        if (err2) reject(new Error(`ffmpeg 失敗：${se2.slice(-300)}`));
-        else resolve();
+    const tryNext = (idx) => {
+      if (idx >= attempts.length) {
+        reject(new Error('ffmpeg 所有嘗試均失敗'));
+        return;
+      }
+      const args = attempts[idx];
+      console.log(`    [ffmpeg] 嘗試 #${idx + 1}...`);
+      execFile(ffmpegPath, args, { timeout: 600000 }, (err, _so, se) => {
+        if (!err) { resolve(); return; }
+        const hint = se.slice(-200).replace(/\s+/g, ' ').trim();
+        console.log(`    [ffmpeg] #${idx + 1} 失敗：${hint}`);
+        tryNext(idx + 1);
       });
-    });
+    };
+    tryNext(0);
   });
 }
 
