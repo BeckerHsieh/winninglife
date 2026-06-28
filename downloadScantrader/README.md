@@ -27,6 +27,11 @@ node index.js
 node index.js --article https://scantrader.com/article/019efe1021b30000122cdd000000000000
 ```
 
+下載完成後會顯示檔案大小與影片時長，例如：`[完成] 0001_xxx.mp4 (512.3 MB, 34:02)`
+可用這行快速確認是否抓到完整影片（例如你這支約 34 分鐘）。
+
+若遠端 HLS 因 ffmpeg 與 CDN/TLS 相容性導致 mp4 封裝失敗，程式會自動保留完整 `.ts` 檔，仍會顯示實際時長，可直接播放或再自行轉檔。
+
 ### 顯示瀏覽器視窗（方便除錯）
 ```bash
 node index.js --no-headless

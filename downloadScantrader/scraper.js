@@ -42,6 +42,38 @@ function isLikelyVideo(url, contentType) {
   return cleanUrl.endsWith('.m3u8') || cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.webm');
 }
 
+function normalizeUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (trimmed.startsWith('//')) return `https:${trimmed}`;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^[\w.-]+\//.test(trimmed)) return `https://${trimmed}`;
+  return trimmed;
+}
+
+function getManifestScore(url) {
+  const u = normalizeUrl(url);
+  if (!u) return -999;
+
+  // JWPlayer 主清單優先，最穩定
+  if (/cdn\.jwplayer\.com\/manifests\/[^/?#]+\.m3u8(?:\?|$)/i.test(u)) return 100;
+  // 明確降權：音軌/視軌子清單常因簽名或相對路徑造成 ffmpeg EOF
+  if (/manifest-(audio|video)_/i.test(u)) return 10;
+  if (u.includes('/manifest.ism/')) return 20;
+  if (/\.m3u8(\?|$)/i.test(u)) return 50;
+  if (/\.(mp4|mov|webm)(\?|$)/i.test(u)) return 40;
+  return 0;
+}
+
+function extractProvideKey(url) {
+  const normalized = normalizeUrl(url);
+  const m1 = normalized.match(/cdn\.jwplayer\.com\/manifests\/([^/?#]+)\.m3u8/i);
+  if (m1) return m1[1];
+  const m2 = normalized.match(/\/media\/([^/?#]+)(?:\/|\?|$)/i);
+  if (m2) return m2[1];
+  return null;
+}
+
 /**
  * 取得頻道所有文章 URL
  * @param {import('playwright').Page} page
@@ -100,7 +132,7 @@ async function getArticleUrls(page) {
  * @returns {Promise<string[]>}
  */
 async function getVideoUrlsFromArticle(page, articleUrl) {
-  const videoUrls = new Set();
+  const candidates = new Map();
 
   // ── 只攔截 JWPlayer m3u8 manifest（嚴格排除 ping/tracking/片段）────────────
   const isManifestUrl = (url) => {
@@ -113,8 +145,9 @@ async function getVideoUrlsFromArticle(page, articleUrl) {
   const responseHandler = (res) => {
     const url = res.url();
     if (isManifestUrl(url)) {
-      console.log(`  [m3u8 ✓] ${url.slice(0, 120)}`);
-      videoUrls.add(url);
+      const normalized = normalizeUrl(url);
+      console.log(`  [m3u8 ✓] ${normalized.slice(0, 120)}`);
+      candidates.set(normalized, res.request().headers());
     }
   };
   page.on('response', responseHandler);
@@ -186,17 +219,53 @@ async function getVideoUrlsFromArticle(page, articleUrl) {
   const domSrcs = await page.$$eval('video[src], video > source[src]', (els) =>
     els.map((el) => el.src || el.getAttribute('src')).filter(Boolean)
   );
-  domSrcs.forEach((u) => { if (isLikelyVideo(u, '')) videoUrls.add(u); });
+  domSrcs.forEach((u) => {
+    const normalized = normalizeUrl(u);
+    if (isLikelyVideo(normalized, '')) candidates.set(normalized, {});
+  });
+
+  // 從頁面內容抽出 JWPlayer provideKey，組出最穩定的主 m3u8
+  try {
+    const html = await page.content();
+    const matchedKeys = Array.from(html.matchAll(/"provideKey"\s*:\s*"([a-zA-Z0-9_-]{6,})"/g));
+    for (const m of matchedKeys) {
+      const key = m[1];
+      const canonical = `https://cdn.jwplayer.com/manifests/${key}.m3u8`;
+      if (!candidates.has(canonical)) candidates.set(canonical, {});
+      console.log(`  [jwplayer key ✓] ${key}`);
+    }
+  } catch {
+    // 忽略解析錯誤，維持既有網路攔截結果
+  }
 
   page.off('response', responseHandler);
 
-  const result = Array.from(videoUrls).filter(Boolean);
-  if (result.length > 0) {
-    console.log(`[爬蟲]   ✓ 找到 ${result.length} 個影片 URL`);
+  const result = Array.from(candidates.entries())
+    .map(([url, headers]) => ({ url: normalizeUrl(url), headers: headers || {} }))
+    .filter((item) => Boolean(item.url))
+    .sort((a, b) => getManifestScore(b.url) - getManifestScore(a.url));
+
+  // 若有 JWPlayer 主 manifest，僅保留主 manifest（避免同影片的變體網址被重複下載）
+  const masters = result.filter((item) => getManifestScore(item.url) >= 100);
+  const selected = masters.length > 0 ? masters : result;
+
+  // 以 provideKey 去重，避免同一影片出現多個等價來源
+  const seenKeys = new Set();
+  const deduped = [];
+  for (const item of selected) {
+    const key = extractProvideKey(item.url) || item.url;
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    deduped.push(item);
+  }
+
+  if (deduped.length > 0) {
+    console.log(`[爬蟲]   ✓ 找到 ${deduped.length} 個影片 URL（已排序）`);
+    console.log(`  優先下載：${deduped[0].url.slice(0, 120)}`);
   } else {
     console.log(`[爬蟲]   ✗ 未找到影片`);
   }
-  return result;
+  return deduped;
 }
 
 module.exports = { getArticleUrls, getVideoUrlsFromArticle, CHANNEL_URL, CHANNEL_NAME };

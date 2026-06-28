@@ -231,6 +231,10 @@ async function login(email, password, headless = false) {
   return { browser, context, page: checkPage };
 }
 
+async function hasSavedSession() {
+  return fs.pathExists(SESSION_FILE);
+}
+
 /**
  * 判斷目前頁面是否已登入
  * scantrader 未登入時，header 右側顯示「登入」文字連結
@@ -254,4 +258,4 @@ async function isLoggedIn(page) {
   }
 }
 
-module.exports = { login, isLoggedIn };
+module.exports = { login, isLoggedIn, hasSavedSession };

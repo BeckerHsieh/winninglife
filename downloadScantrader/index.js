@@ -13,7 +13,7 @@
  */
 
 const readlineSync = require('readline-sync');
-const { login } = require('./login');
+const { login, hasSavedSession } = require('./login');
 const { getArticleUrls, getVideoUrlsFromArticle, CHANNEL_URL, CHANNEL_NAME } = require('./scraper');
 const { downloadVideo, OUTPUT_DIR } = require('./downloader');
 
@@ -31,19 +31,36 @@ const singleArticleUrl = singleArticleIdx !== -1 ? args[singleArticleIdx + 1] : 
   console.log(`  下載目錄：${OUTPUT_DIR}`);
   console.log('='.repeat(60));
 
-  // 取得登入憑證
-  const email = process.env.SCANTRADER_EMAIL || readlineSync.question('LINE 登入 Email: ');
-  const password =
-    process.env.SCANTRADER_PASSWORD ||
-    readlineSync.question('LINE 登入密碼: ', { hideEchoBack: true });
+  const sessionExists = await hasSavedSession();
+  const promptForCredentials = () => ({
+    email: process.env.SCANTRADER_EMAIL || readlineSync.question('LINE 登入 Email: '),
+    password:
+      process.env.SCANTRADER_PASSWORD ||
+      readlineSync.question('LINE 登入密碼: ', { hideEchoBack: true }),
+  });
+
+  // 有有效 session 時先嘗試不打擾地登入；失敗再要求輸入憑證
+  const initialCredentials = sessionExists
+    ? { email: process.env.SCANTRADER_EMAIL || '', password: process.env.SCANTRADER_PASSWORD || '' }
+    : promptForCredentials();
 
   let browser, context, page;
 
   try {
-    ({ browser, context, page } = await login(email, password, headless));
+    ({ browser, context, page } = await login(initialCredentials.email, initialCredentials.password, headless));
   } catch (err) {
-    console.error('[主程式] 登入失敗：', err.message);
-    process.exit(1);
+    if (sessionExists) {
+      const credentials = promptForCredentials();
+      try {
+        ({ browser, context, page } = await login(credentials.email, credentials.password, headless));
+      } catch (retryErr) {
+        console.error('[主程式] 登入失敗：', retryErr.message);
+        process.exit(1);
+      }
+    } else {
+      console.error('[主程式] 登入失敗：', err.message);
+      process.exit(1);
+    }
   }
 
   // 決定要處理的文章列表
@@ -98,10 +115,10 @@ const singleArticleUrl = singleArticleIdx !== -1 ? args[singleArticleIdx + 1] : 
     const cookies = await context.cookies();
 
     // ── 並行下載同篇文章的所有影片（避免簽名 URL 過期）──────────────────────
-    const downloadTasks = videoUrls.map((videoUrl, j) => {
+    const downloadTasks = videoUrls.map((videoSource, j) => {
       const suffix = videoUrls.length > 1 ? `-${j + 1}` : '';
       const fileTitle = `${title}${suffix}`;
-      return downloadVideo(videoUrl, fileTitle, i + 1, cookies);
+      return downloadVideo(videoSource, fileTitle, i + 1, cookies);
     });
 
     const results = await Promise.all(downloadTasks);
