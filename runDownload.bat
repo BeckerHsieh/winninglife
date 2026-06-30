@@ -1,0 +1,1 @@
+node ./downloadScantrader/index.js --article %*
