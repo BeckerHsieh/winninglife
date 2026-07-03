@@ -51,6 +51,18 @@ function normalizeMediaUrl(url) {
   return trimmed;
 }
 
+function getJwplayerManifestId(url) {
+  const normalized = normalizeMediaUrl(url);
+  const m = normalized.match(/cdn\.jwplayer\.com\/manifests\/([^/?#]+)\.m3u8/i);
+  return m ? m[1] : null;
+}
+
+function toCanonicalManifestUrl(url) {
+  const id = getJwplayerManifestId(url);
+  if (!id) return normalizeMediaUrl(url);
+  return `https://cdn.jwplayer.com/manifests/${id}.m3u8`;
+}
+
 function buildRequestHeaders(requestHeaders = {}, cookies = [], url = '') {
   const headers = {};
 
@@ -87,6 +99,29 @@ function headersToString(headers = {}) {
 async function fetchText(url, headers) {
   const res = await axios.get(url, { timeout: 30000, headers, responseType: 'text' });
   return String(res.data || '');
+}
+
+async function fetchTextWithJwFallback(url, headers) {
+  const normalized = normalizeMediaUrl(url);
+  const candidates = [normalized];
+
+  const canonical = toCanonicalManifestUrl(normalized);
+  if (canonical !== normalized) candidates.push(canonical);
+
+  let lastError = null;
+  for (const candidate of candidates) {
+    try {
+      const text = await fetchText(candidate, headers);
+      return { text, resolvedUrl: candidate };
+    } catch (err) {
+      lastError = err;
+      if (!(err && err.response && err.response.status === 403)) {
+        throw err;
+      }
+    }
+  }
+
+  throw lastError || new Error('fetch manifest failed');
 }
 
 function parseMasterPlaylist(playlistText, playlistUrl) {
@@ -166,6 +201,19 @@ async function materializeLocalPlaylist(mediaText, mediaPlaylistUrl, tempDir, he
   return { localPlaylistPath, segmentFiles };
 }
 
+async function materializeWithSegmentRetry(mediaText, mediaPlaylistUrl, tempDir, headers) {
+  try {
+    return await materializeLocalPlaylist(mediaText, mediaPlaylistUrl, tempDir, headers);
+  } catch (err) {
+    const status = err && err.response && err.response.status;
+    if (status !== 403) throw err;
+
+    // 某些簽名片段會短時過期，重抓同一 media playlist 後再試一次。
+    const refreshedMediaText = await fetchText(mediaPlaylistUrl, headers);
+    return materializeLocalPlaylist(refreshedMediaText, mediaPlaylistUrl, tempDir, headers);
+  }
+}
+
 async function concatSegmentFilesToTs(segmentFiles, tsPath) {
   await fs.remove(tsPath).catch(() => {});
   for (const segFile of segmentFiles) {
@@ -229,13 +277,14 @@ function remuxPlaylistToMp4(localPlaylistPath, outPath) {
 
 async function downloadHlsViaNode(url, filePath, requestHeaders = {}, cookies = []) {
   const headers = buildRequestHeaders(requestHeaders, cookies, url);
-  const masterText = await fetchText(url, headers);
+  const masterResolved = await fetchTextWithJwFallback(url, headers);
+  const masterText = masterResolved.text;
 
-  let mediaPlaylistUrl = url;
+  let mediaPlaylistUrl = masterResolved.resolvedUrl;
   let mediaText = masterText;
 
   if (masterText.includes('#EXT-X-STREAM-INF')) {
-    const variants = parseMasterPlaylist(masterText, url);
+    const variants = parseMasterPlaylist(masterText, mediaPlaylistUrl);
     if (!variants.length) throw new Error('主清單無可用變體');
     variants.sort((a, b) => b.bandwidth - a.bandwidth);
     mediaPlaylistUrl = variants[0].url;
@@ -248,7 +297,7 @@ async function downloadHlsViaNode(url, filePath, requestHeaders = {}, cookies = 
   const tempDir = path.join(os.tmpdir(), `scantrader_hls_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
   await fs.remove(tempDir).catch(() => {});
   try {
-    const { localPlaylistPath, segmentFiles } = await materializeLocalPlaylist(mediaText, mediaPlaylistUrl, tempDir, headers);
+    const { localPlaylistPath, segmentFiles } = await materializeWithSegmentRetry(mediaText, mediaPlaylistUrl, tempDir, headers);
     try {
       await remuxPlaylistToMp4(localPlaylistPath, filePath);
       return filePath;

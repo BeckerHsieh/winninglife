@@ -59,6 +59,46 @@ node index.js
 ...
 ```
 
+每支影片下載後，會額外產生：
+
+1. 字幕文字 Markdown
+```
+downloads/0001_文章標題/0001_文章標題_字幕文字.md
+```
+
+2. 簡報換頁擷取圖（.jpg）
+```
+downloads/slides/20260703_00001.jpg
+downloads/slides/20260703_00002.jpg
+...
+```
+
+3. 股票彙整 Markdown（依「代碼+名稱」命名）
+```
+downloads/stocks/2330台積電.md
+downloads/stocks/2317鴻海.md
+...
+```
+
+> 註：字幕改為 ASR（Whisper 語音辨識），簡報股票辨識仍使用 OCR。
+
+## 字幕 ASR 需求
+
+請先安裝任一種 Whisper 執行方式（擇一即可）：
+
+1. whisper CLI（建議）
+2. `py -3 -m whisper`
+3. `python -m whisper`
+
+若未安裝 Whisper，程式會顯示「找不到可用 Whisper 執行環境」。
+
+可用環境變數調整模型：
+
+```bash
+set WHISPER_MODEL=small
+set WHISPER_LANGUAGE=zh
+```
+
 ## 注意事項
 
 - HLS 串流（`.m3u8`）需安裝 `ffmpeg` 才能下載
