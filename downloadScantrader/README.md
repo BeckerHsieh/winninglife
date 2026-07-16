@@ -73,6 +73,8 @@ downloads/slides/20260703_00002.jpg
 ...
 ```
 
+簡報圖目前改為 Playwright 瀏覽器截圖流程，會先在 `slides_tmp/` 產生多張暫存圖，再做 OCR 與股票辨識。
+
 3. 股票彙整 Markdown（依「代碼+名稱」命名）
 ```
 downloads/stocks/2330台積電.md
@@ -97,7 +99,18 @@ downloads/stocks/2317鴻海.md
 ```bash
 set WHISPER_MODEL=small
 set WHISPER_LANGUAGE=zh
+set SLIDE_MIN_FRAMES=200
+set SLIDE_FALLBACK_INTERVAL_SECONDS=5
 ```
+
+可用環境變數調整簡報擷取張數：
+
+```bash
+set SLIDE_MAX_FRAMES=300
+```
+
+- `SLIDE_MIN_FRAMES`：瀏覽器截圖流程期望至少擷取的張數
+- `SLIDE_FALLBACK_INTERVAL_SECONDS`：瀏覽器 seek 抽圖時，兩張截圖之間的最大秒數
 
 ## 注意事項
 

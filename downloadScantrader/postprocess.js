@@ -9,11 +9,14 @@
 const fs = require('fs-extra');
 const path = require('path');
 const { execFile, execSync } = require('child_process');
+const { pathToFileURL } = require('url');
+const { chromium } = require('playwright');
 
 let tesseractModule = null;
 
 const SLIDE_MAX_FRAMES = Number(process.env.SLIDE_MAX_FRAMES || 300);
-const SCENE_THRESHOLD = Number(process.env.SLIDE_SCENE_THRESHOLD || 0.35);
+const SLIDE_MIN_FRAMES = Number(process.env.SLIDE_MIN_FRAMES || 200);
+const SLIDE_FALLBACK_INTERVAL_SECONDS = Number(process.env.SLIDE_FALLBACK_INTERVAL_SECONDS || 5);
 const WHISPER_MODEL = process.env.WHISPER_MODEL || 'small';
 const WHISPER_LANGUAGE = process.env.WHISPER_LANGUAGE || 'zh';
 
@@ -410,6 +413,63 @@ async function listJpgFiles(dir) {
     .sort((a, b) => a.localeCompare(b, 'en'));
 }
 
+async function waitForVideoReady(page) {
+  await page.locator('video').evaluate(async (video) => {
+    if (video.readyState >= 1 && Number.isFinite(video.duration) && video.duration > 0) return;
+
+    await new Promise((resolve, reject) => {
+      const onReady = () => {
+        cleanup();
+        resolve();
+      };
+      const onError = () => {
+        cleanup();
+        reject(new Error('video load failed'));
+      };
+      const cleanup = () => {
+        video.removeEventListener('loadedmetadata', onReady);
+        video.removeEventListener('error', onError);
+      };
+
+      video.addEventListener('loadedmetadata', onReady, { once: true });
+      video.addEventListener('error', onError, { once: true });
+    });
+  });
+}
+
+async function seekVideoTo(page, timeSeconds) {
+  await page.locator('video').evaluate(async (video, time) => {
+    const targetTime = Math.max(0, Number(time) || 0);
+    video.pause();
+
+    if (Math.abs((Number(video.currentTime) || 0) - targetTime) < 0.05) {
+      await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+      return;
+    }
+
+    await new Promise((resolve, reject) => {
+      const onSeeked = () => {
+        cleanup();
+        resolve();
+      };
+      const onError = () => {
+        cleanup();
+        reject(new Error('seek failed'));
+      };
+      const cleanup = () => {
+        video.removeEventListener('seeked', onSeeked);
+        video.removeEventListener('error', onError);
+      };
+
+      video.addEventListener('seeked', onSeeked, { once: true });
+      video.addEventListener('error', onError, { once: true });
+      video.currentTime = targetTime;
+    });
+
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  }, timeSeconds);
+}
+
 async function runOcrLines(imagePaths, lang = 'chi_tra+eng') {
   if (imagePaths.length === 0) return [];
   const { createWorker } = await ensureTesseract();
@@ -427,6 +487,57 @@ async function runOcrLines(imagePaths, lang = 'chi_tra+eng') {
   }
 
   return lines;
+}
+
+async function ensureBrowserPreviewVideo(videoPath, videoWorkDir) {
+  const ext = path.extname(videoPath).toLowerCase();
+  if (ext !== '.ts') return videoPath;
+
+  const ffmpegPath = findFfmpeg();
+  if (!ffmpegPath) {
+    throw new Error('找不到 ffmpeg，無法將 TS 轉為瀏覽器可 seek 的預覽檔');
+  }
+
+  const previewPath = path.join(videoWorkDir, 'browser_preview.mp4');
+  if (await fs.pathExists(previewPath)) {
+    const stat = await fs.stat(previewPath).catch(() => null);
+    if (stat && stat.size > 1024 * 1024) return previewPath;
+  }
+
+  const attempts = [
+    [
+      '-y',
+      '-fflags', '+genpts+igndts+discardcorrupt',
+      '-i', videoPath,
+      '-map', '0:v:0?', '-map', '0:a:0?',
+      '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k',
+      '-movflags', '+faststart',
+      previewPath,
+    ],
+    [
+      '-y',
+      '-fflags', '+genpts+igndts+discardcorrupt',
+      '-err_detect', 'ignore_err',
+      '-i', videoPath,
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23',
+      '-c:a', 'aac', '-b:a', '128k',
+      '-movflags', '+faststart',
+      previewPath,
+    ],
+  ];
+
+  let lastError = null;
+  for (const args of attempts) {
+    try {
+      await runFfmpeg(ffmpegPath, args, 2 * 60 * 60 * 1000);
+      const stat = await fs.stat(previewPath).catch(() => null);
+      if (stat && stat.size > 1024 * 1024) return previewPath;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw new Error(`TS 預覽轉檔失敗: ${String((lastError && lastError.message) || lastError || 'unknown error')}`);
 }
 
 async function generateSubtitleMarkdown(videoPath, videoWorkDir, baseName) {
@@ -526,46 +637,121 @@ function extractStocksFromText(text) {
 }
 
 async function extractSlideFrames(videoPath, videoWorkDir, outputDir) {
-  const ffmpegPath = findFfmpeg();
-  if (!ffmpegPath) {
-    return { ok: false, reason: '找不到 ffmpeg，無法擷取簡報畫面' };
-  }
-
   const tempSlideDir = path.join(videoWorkDir, 'slides_tmp');
   await fs.emptyDir(tempSlideDir);
 
-  const outPattern = path.join(tempSlideDir, 'slide_raw_%05d.jpg');
-  const vf = `select='gt(scene,${SCENE_THRESHOLD})',scale=1600:-1`;
+  const browserVideoPath = await ensureBrowserPreviewVideo(videoPath, videoWorkDir);
 
-  await runFfmpeg(ffmpegPath, [
-    '-y',
-    '-i', videoPath,
-    '-vf', vf,
-    '-vsync', 'vfr',
-    '-frames:v', String(SLIDE_MAX_FRAMES),
-    '-q:v', '3',
-    outPattern,
-  ]);
+  const previewHtmlPath = path.join(videoWorkDir, 'slides_preview.html');
+  const videoFileUrl = pathToFileURL(browserVideoPath).href;
+  const previewHtml = `<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 1600px;
+      height: 900px;
+      background: #000;
+      overflow: hidden;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    video {
+      width: 1600px;
+      height: 900px;
+      object-fit: contain;
+      background: #000;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <video id="video" src="${videoFileUrl}" preload="auto" muted playsinline></video>
+</body>
+</html>`;
+  await fs.writeFile(previewHtmlPath, previewHtml, 'utf8');
 
-  const rawSlides = await listJpgFiles(tempSlideDir);
+  let browser;
+  let context;
+  let page;
 
-  const globalSlideDir = path.join(outputDir, 'slides');
-  await fs.ensureDir(globalSlideDir);
-  const dateStamp = getDateStamp();
-  let seq = await getTodaySlideStartIndex(globalSlideDir, dateStamp);
+  try {
+    browser = await chromium.launch({
+      headless: true,
+      args: ['--allow-file-access-from-files'],
+    });
+    context = await browser.newContext({
+      viewport: { width: 1600, height: 900 },
+      deviceScaleFactor: 1,
+    });
+    page = await context.newPage();
 
-  const slides = [];
-  for (const rawFile of rawSlides) {
-    const finalName = `${dateStamp}_${String(seq).padStart(5, '0')}.jpg`;
-    const fromPath = path.join(tempSlideDir, rawFile);
-    const toPath = path.join(globalSlideDir, finalName);
-    await fs.move(fromPath, toPath, { overwrite: false });
-    slides.push(finalName);
-    seq++;
+    await page.goto(pathToFileURL(previewHtmlPath).href, { waitUntil: 'load', timeout: 30000 });
+    await page.waitForSelector('video', { timeout: 30000 });
+    await waitForVideoReady(page);
+
+    const videoDuration = await page.locator('video').evaluate((video) => Number(video.duration) || 0);
+    if (!Number.isFinite(videoDuration) || videoDuration <= 0) {
+      throw new Error('無法取得影片長度，無法擷取瀏覽器截圖');
+    }
+
+    const targetFrames = Math.max(1, Math.min(SLIDE_MAX_FRAMES, SLIDE_MIN_FRAMES));
+    const idealInterval = Math.max(1, Math.min(SLIDE_FALLBACK_INTERVAL_SECONDS, Math.ceil(videoDuration / targetFrames)));
+    const captureCount = Math.min(
+      SLIDE_MAX_FRAMES,
+      Math.max(targetFrames, Math.ceil(videoDuration / idealInterval) + 1)
+    );
+    const captureTimes = Array.from({ length: captureCount }, (_v, i) => {
+      if (captureCount === 1) return 0;
+      return (videoDuration * i) / (captureCount - 1);
+    });
+
+    const videoLocator = page.locator('video');
+    const rawSlides = [];
+    for (let i = 0; i < captureTimes.length; i++) {
+      const time = captureTimes[i];
+      await seekVideoTo(page, time);
+      await page.waitForTimeout(250);
+
+      const filename = `slide_raw_${String(i + 1).padStart(5, '0')}.jpg`;
+      const filePath = path.join(tempSlideDir, filename);
+      await videoLocator.screenshot({ path: filePath });
+      rawSlides.push(filename);
+      console.log(`    [簡報擷取] browser ${formatTimestamp(time)}: ${rawSlides.length} 張`);
+    }
+
+    const globalSlideDir = path.join(outputDir, 'slides');
+    await fs.ensureDir(globalSlideDir);
+    const dateStamp = getDateStamp();
+    let seq = await getTodaySlideStartIndex(globalSlideDir, dateStamp);
+
+    const slides = [];
+    for (const rawFile of rawSlides) {
+      const finalName = `${dateStamp}_${String(seq).padStart(5, '0')}.jpg`;
+      const fromPath = path.join(tempSlideDir, rawFile);
+      const toPath = path.join(globalSlideDir, finalName);
+      await fs.move(fromPath, toPath, { overwrite: false });
+      slides.push(finalName);
+      seq++;
+    }
+
+    await fs.remove(tempSlideDir).catch(() => {});
+    return { ok: true, slideDir: globalSlideDir, slides };
+  } catch (err) {
+    return { ok: false, reason: err.message || String(err) };
+  } finally {
+    if (page) await page.close().catch(() => {});
+    if (context) await context.close().catch(() => {});
+    if (browser) await browser.close().catch(() => {});
+    await fs.remove(previewHtmlPath).catch(() => {});
   }
-
-  await fs.remove(tempSlideDir).catch(() => {});
-  return { ok: true, slideDir: globalSlideDir, slides };
 }
 
 async function processSlidesAndExtractStocks(videoPath, videoWorkDir, baseName) {
