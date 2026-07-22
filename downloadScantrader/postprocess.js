@@ -185,6 +185,24 @@ function formatTimestamp(seconds) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+function probeVideoDurationSeconds(filePath, ffmpegPath) {
+  return new Promise((resolve) => {
+    execFile(ffmpegPath, ['-i', filePath], { timeout: 30000 }, (_err, stdout = '', stderr = '') => {
+      const text = `${stdout || ''}\n${stderr || ''}`;
+      const m = text.match(/Duration:\s*(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)/i);
+      if (!m) {
+        resolve(null);
+        return;
+      }
+
+      const h = Number(m[1]);
+      const min = Number(m[2]);
+      const sec = Number(m[3]);
+      resolve(h * 3600 + min * 60 + sec);
+    });
+  });
+}
+
 function parseSrtToTimeline(srtText) {
   const blocks = String(srtText || '')
     .replace(/\r/g, '')
@@ -212,6 +230,61 @@ function parseSrtToTimeline(srtText) {
   }
 
   return timeline;
+}
+
+function normalizeSummaryKey(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[\s`~!@#$%^&*()_+\-=\[\]{};:'"\\|,.<>/?，。！？；：（）【】《》、]/g, '')
+    .trim();
+}
+
+function buildSubtitleSummary(timeline, maxItems = 8) {
+  if (!Array.isArray(timeline) || timeline.length === 0) return [];
+
+  const keywordRe = /(重點|結論|注意|風險|機會|觀察|趨勢|反彈|轉弱|壓力|支撐|買點|賣點|停損|估值|營收|獲利|通膨|利率|美元|台積電|半導體|指數|大盤|資金|籌碼|法說|財報)/;
+  const minLen = 10;
+
+  const candidates = timeline
+    .map((item, idx) => ({ idx, t: item.t, text: normalizeOcrText(item.text) }))
+    .filter((item) => item.text.length >= minLen)
+    .map((item) => {
+      const lenScore = Math.min(6, Math.floor(item.text.length / 12));
+      const keywordScore = keywordRe.test(item.text) ? 4 : 0;
+      return {
+        ...item,
+        score: lenScore + keywordScore,
+      };
+    })
+    .sort((a, b) => b.score - a.score || a.idx - b.idx);
+
+  const selected = [];
+  const seen = new Set();
+  for (const c of candidates) {
+    const key = normalizeSummaryKey(c.text);
+    if (!key) continue;
+
+    // 避免大量重複台詞灌滿摘要
+    let duplicated = false;
+    for (const existing of seen) {
+      if (key.includes(existing) || existing.includes(key)) {
+        duplicated = true;
+        break;
+      }
+    }
+    if (duplicated) continue;
+
+    seen.add(key);
+    selected.push(c);
+    if (selected.length >= maxItems) break;
+  }
+
+  return selected
+    .sort((a, b) => a.idx - b.idx)
+    .map((item) => ({
+      t: item.t,
+      text: item.text,
+    }));
 }
 
 async function runWhisperAsr(audioPath, asrDir) {
@@ -508,9 +581,13 @@ async function ensureBrowserPreviewVideo(videoPath, videoWorkDir) {
     [
       '-y',
       '-fflags', '+genpts+igndts+discardcorrupt',
+      '-err_detect', 'ignore_err',
       '-i', videoPath,
-      '-map', '0:v:0?', '-map', '0:a:0?',
-      '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k',
+      '-map', '0:v:0?',
+      '-an',
+      '-c:v', 'copy',
+      '-avoid_negative_ts', 'make_zero',
+      '-max_interleave_delta', '0',
       '-movflags', '+faststart',
       previewPath,
     ],
@@ -519,8 +596,25 @@ async function ensureBrowserPreviewVideo(videoPath, videoWorkDir) {
       '-fflags', '+genpts+igndts+discardcorrupt',
       '-err_detect', 'ignore_err',
       '-i', videoPath,
+      '-map', '0:v:0?',
+      '-an',
       '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23',
-      '-c:a', 'aac', '-b:a', '128k',
+      '-pix_fmt', 'yuv420p',
+      '-avoid_negative_ts', 'make_zero',
+      '-max_interleave_delta', '0',
+      '-movflags', '+faststart',
+      previewPath,
+    ],
+    [
+      '-y',
+      '-fflags', '+genpts+igndts+discardcorrupt',
+      '-err_detect', 'ignore_err',
+      '-i', videoPath,
+      '-map', '0:v:0?',
+      '-an',
+      '-vf', 'setpts=N/FRAME_RATE/TB',
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '24',
+      '-pix_fmt', 'yuv420p',
       '-movflags', '+faststart',
       previewPath,
     ],
@@ -538,6 +632,77 @@ async function ensureBrowserPreviewVideo(videoPath, videoWorkDir) {
   }
 
   throw new Error(`TS 預覽轉檔失敗: ${String((lastError && lastError.message) || lastError || 'unknown error')}`);
+}
+
+async function extractSlidesViaFfmpeg(videoPath, tempSlideDir) {
+  const ffmpegPath = findFfmpeg();
+  if (!ffmpegPath) {
+    throw new Error('找不到 ffmpeg，無法使用備援簡報擷取');
+  }
+
+  const interval = Math.max(1, SLIDE_FALLBACK_INTERVAL_SECONDS);
+  const durationSec = await probeVideoDurationSeconds(videoPath, ffmpegPath);
+
+  if (!durationSec || !Number.isFinite(durationSec) || durationSec <= 0) {
+    const outPattern = path.join(tempSlideDir, 'slide_raw_%05d.jpg');
+    await runFfmpeg(ffmpegPath, [
+      '-y',
+      '-fflags', '+genpts+igndts+discardcorrupt',
+      '-err_detect', 'ignore_err',
+      '-i', videoPath,
+      '-map', '0:v:0?',
+      '-an',
+      '-vf', `fps=1/${interval},scale=1600:-1`,
+      '-vsync', 'vfr',
+      '-frames:v', String(SLIDE_MAX_FRAMES),
+      '-q:v', '3',
+      outPattern,
+    ], 2 * 60 * 60 * 1000);
+
+    const files = await listJpgFiles(tempSlideDir);
+    console.log(`    [簡報擷取] ffmpeg fallback(single): ${files.length} 張`);
+    return files;
+  }
+
+  const chunkSeconds = 5 * 60;
+  let written = 0;
+  const chunkCount = Math.max(1, Math.ceil(durationSec / chunkSeconds));
+
+  for (let chunkIndex = 0; chunkIndex < chunkCount && written < SLIDE_MAX_FRAMES; chunkIndex++) {
+    const startSec = chunkIndex * chunkSeconds;
+    const remainingBudget = SLIDE_MAX_FRAMES - written;
+    const thisChunkSeconds = Math.min(chunkSeconds, Math.max(1, durationSec - startSec));
+    const chunkFrameBudget = Math.max(1, Math.min(remainingBudget, Math.ceil(thisChunkSeconds / interval) + 2));
+    const outPattern = path.join(tempSlideDir, `slide_raw_${String(chunkIndex + 1).padStart(3, '0')}_%05d.jpg`);
+
+    try {
+      await runFfmpeg(ffmpegPath, [
+        '-y',
+        '-ss', String(startSec),
+        '-t', String(thisChunkSeconds),
+        '-fflags', '+genpts+igndts+discardcorrupt',
+        '-err_detect', 'ignore_err',
+        '-i', videoPath,
+        '-map', '0:v:0?',
+        '-an',
+        '-vf', `fps=1/${interval},scale=1600:-1`,
+        '-vsync', 'vfr',
+        '-frames:v', String(chunkFrameBudget),
+        '-q:v', '3',
+        outPattern,
+      ], 2 * 60 * 60 * 1000);
+    } catch (err) {
+      console.log(`    [簡報擷取] ffmpeg chunk ${chunkIndex + 1}/${chunkCount} 失敗：${String(err.message || err).slice(-240)}`);
+    }
+
+    const currentFiles = await listJpgFiles(tempSlideDir);
+    written = currentFiles.length;
+    console.log(`    [簡報擷取] ffmpeg chunk ${chunkIndex + 1}/${chunkCount}: ${written} 張`);
+  }
+
+  const files = await listJpgFiles(tempSlideDir);
+  console.log(`    [簡報擷取] ffmpeg fallback: ${files.length} 張`);
+  return files;
 }
 
 async function generateSubtitleMarkdown(videoPath, videoWorkDir, baseName) {
@@ -564,6 +729,7 @@ async function generateSubtitleMarkdown(videoPath, videoWorkDir, baseName) {
     const asrResult = await runWhisperAsr(audioPath, asrDir);
     const srtText = await fs.readFile(asrResult.srtPath, 'utf8');
     const timeline = parseSrtToTimeline(srtText);
+    const summary = buildSubtitleSummary(timeline);
 
     const subtitleMdPath = path.join(videoWorkDir, `${baseName}_字幕文字.md`);
     const lines = [];
@@ -572,6 +738,22 @@ async function generateSubtitleMarkdown(videoPath, videoWorkDir, baseName) {
     lines.push(`- 來源影片: ${path.basename(videoPath)}`);
     lines.push(`- 來源方式: ASR (${asrResult.backend})`);
     lines.push(`- Whisper 模型: ${WHISPER_MODEL}`);
+    lines.push(`- 字幕來源檔: asr/${path.basename(asrResult.srtPath)}`);
+    lines.push('');
+
+    lines.push('## 重點摘要');
+    lines.push('');
+
+    if (summary.length === 0) {
+      lines.push('- （未能從字幕中提取重點，請參考下方完整時間軸）');
+    } else {
+      for (const item of summary) {
+        lines.push(`- [${item.t}] ${item.text}`);
+      }
+    }
+
+    lines.push('');
+    lines.push('## 完整時間軸');
     lines.push('');
 
     if (timeline.length === 0) {
@@ -640,7 +822,35 @@ async function extractSlideFrames(videoPath, videoWorkDir, outputDir) {
   const tempSlideDir = path.join(videoWorkDir, 'slides_tmp');
   await fs.emptyDir(tempSlideDir);
 
-  const browserVideoPath = await ensureBrowserPreviewVideo(videoPath, videoWorkDir);
+  let browserVideoPath = videoPath;
+  try {
+    browserVideoPath = await ensureBrowserPreviewVideo(videoPath, videoWorkDir);
+  } catch (err) {
+    console.log(`    [簡報擷取] browser 預覽轉檔失敗，改用 ffmpeg 備援：${String(err && err.message ? err.message : err)}`);
+    try {
+      const rawSlides = await extractSlidesViaFfmpeg(videoPath, tempSlideDir);
+
+      const globalSlideDir = path.join(outputDir, 'slides');
+      await fs.ensureDir(globalSlideDir);
+      const dateStamp = getDateStamp();
+      let seq = await getTodaySlideStartIndex(globalSlideDir, dateStamp);
+
+      const slides = [];
+      for (const rawFile of rawSlides) {
+        const finalName = `${dateStamp}_${String(seq).padStart(5, '0')}.jpg`;
+        const fromPath = path.join(tempSlideDir, rawFile);
+        const toPath = path.join(globalSlideDir, finalName);
+        await fs.move(fromPath, toPath, { overwrite: false });
+        slides.push(finalName);
+        seq++;
+      }
+
+      await fs.remove(tempSlideDir).catch(() => {});
+      return { ok: true, slideDir: globalSlideDir, slides };
+    } catch (fallbackErr) {
+      return { ok: false, reason: String(fallbackErr && fallbackErr.message ? fallbackErr.message : fallbackErr) };
+    }
+  }
 
   const previewHtmlPath = path.join(videoWorkDir, 'slides_preview.html');
   const videoFileUrl = pathToFileURL(browserVideoPath).href;
@@ -751,6 +961,9 @@ async function extractSlideFrames(videoPath, videoWorkDir, outputDir) {
     if (context) await context.close().catch(() => {});
     if (browser) await browser.close().catch(() => {});
     await fs.remove(previewHtmlPath).catch(() => {});
+    if (browserVideoPath && browserVideoPath !== videoPath) {
+      await fs.remove(browserVideoPath).catch(() => {});
+    }
   }
 }
 
@@ -823,7 +1036,7 @@ async function writeStockMarkdowns(allMentions, outputDir) {
 
       lines.push(`## ${item.video}`);
       lines.push(`- 畫面: ${item.imageFile}`);
-      lines.push(`- 圖片路徑: ${item.imageRelativePath}`);
+      lines.push(`- 圖片: ![${item.imageFile}](${item.imageRelativePath})`);
       if (item.contextText) {
         lines.push(`- OCR: ${item.contextText.slice(0, 300)}`);
       }
@@ -843,14 +1056,91 @@ async function processDownloadedVideo(filePath) {
   const videoWorkDir = path.join(outputDir, baseName);
   await fs.ensureDir(videoWorkDir);
 
-  const subtitle = await generateSubtitleMarkdown(filePath, videoWorkDir, baseName).catch((err) => ({ ok: false, reason: err.message }));
-  const slide = await processSlidesAndExtractStocks(filePath, videoWorkDir, baseName).catch((err) => ({ ok: false, reason: err.message, mentions: [] }));
+  try {
+    const subtitle = await generateSubtitleMarkdown(filePath, videoWorkDir, baseName).catch((err) => ({ ok: false, reason: err.message }));
+    const slide = await processSlidesAndExtractStocks(filePath, videoWorkDir, baseName).catch((err) => ({ ok: false, reason: err.message, mentions: [] }));
+
+    return {
+      videoPath: filePath,
+      subtitle,
+      slide,
+      mentions: (slide && slide.mentions) || [],
+    };
+  } finally {
+    await fs.remove(filePath).catch(() => {});
+  }
+}
+
+async function summarizeSrtToMarkdown(srtPath, outputMdPath = null) {
+  const absSrtPath = path.resolve(String(srtPath || ''));
+  if (!(await fs.pathExists(absSrtPath))) {
+    throw new Error(`找不到 SRT 檔案: ${absSrtPath}`);
+  }
+
+  const srtText = await fs.readFile(absSrtPath, 'utf8');
+  const timeline = parseSrtToTimeline(srtText);
+  const summary = buildSubtitleSummary(timeline);
+
+  const defaultMdPath = path.join(
+    path.dirname(absSrtPath),
+    `${path.parse(absSrtPath).name}_彙整.md`
+  );
+  const mdPath = outputMdPath ? path.resolve(outputMdPath) : defaultMdPath;
+
+  const lines = [];
+  lines.push(`# ${path.parse(absSrtPath).name} 字幕彙整`);
+  lines.push('');
+  lines.push(`- 來源 SRT: ${path.basename(absSrtPath)}`);
+  lines.push(`- 條目數: ${timeline.length}`);
+  lines.push('');
+  lines.push('## 重點摘要');
+  lines.push('');
+
+  if (summary.length === 0) {
+    lines.push('- （未能從字幕中提取重點，請參考下方完整時間軸）');
+  } else {
+    for (const item of summary) {
+      lines.push(`- [${item.t}] ${item.text}`);
+    }
+  }
+
+  lines.push('');
+  lines.push('## 完整時間軸');
+  lines.push('');
+
+  if (timeline.length === 0) {
+    lines.push('> 未能解析出有效字幕時間軸。');
+  } else {
+    for (const item of timeline) {
+      lines.push(`- [${item.t}] ${item.text}`);
+    }
+  }
+
+  await fs.writeFile(mdPath, `${lines.join('\n')}\n`, 'utf8');
+  return { srtPath: absSrtPath, mdPath, timelineCount: timeline.length, summaryCount: summary.length };
+}
+
+async function extractSlidesOnly(videoPath) {
+  const absVideoPath = path.resolve(String(videoPath || ''));
+  if (!(await fs.pathExists(absVideoPath))) {
+    throw new Error(`找不到影片檔案: ${absVideoPath}`);
+  }
+
+  const outputDir = path.dirname(absVideoPath);
+  const baseName = path.parse(absVideoPath).name;
+  const videoWorkDir = path.join(outputDir, baseName);
+  await fs.ensureDir(videoWorkDir);
+
+  const result = await extractSlideFrames(absVideoPath, videoWorkDir, outputDir);
+  if (!result.ok) {
+    throw new Error(result.reason || '簡報擷取失敗');
+  }
 
   return {
-    videoPath: filePath,
-    subtitle,
-    slide,
-    mentions: (slide && slide.mentions) || [],
+    videoPath: absVideoPath,
+    slideDir: result.slideDir,
+    slideCount: (result.slides || []).length,
+    slides: result.slides || [],
   };
 }
 
@@ -858,4 +1148,6 @@ module.exports = {
   checkAsrPreflight,
   processDownloadedVideo,
   writeStockMarkdowns,
+  summarizeSrtToMarkdown,
+  extractSlidesOnly,
 };

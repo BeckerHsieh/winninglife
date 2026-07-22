@@ -63,6 +63,20 @@ function toCanonicalManifestUrl(url) {
   return `https://cdn.jwplayer.com/manifests/${id}.m3u8`;
 }
 
+function isSignedJwManifest(url) {
+  const normalized = normalizeMediaUrl(url);
+  return /cdn\.jwplayer\.com\/manifests\/[^/?#]+\.m3u8/i.test(normalized)
+    && /[?&](exp|sig)=/i.test(normalized);
+}
+
+function isHttp403Error(err) {
+  if (!err) return false;
+  const status = err.response && err.response.status;
+  if (status === 403) return true;
+  const msg = String(err.message || err).toLowerCase();
+  return msg.includes('status code 403') || msg.includes('403 forbidden') || msg.includes('access denied');
+}
+
 function buildRequestHeaders(requestHeaders = {}, cookies = [], url = '') {
   const headers = {};
 
@@ -483,8 +497,33 @@ async function downloadVideo(videoUrl, articleTitle, index, cookies = []) {
       try {
         await downloadHls(normalizedVideoUrl, filePath, requestHeaders, cookies);
       } catch (hlsErr) {
-        console.log(`    [HLS fallback] 啟用 Node 片段下載：${hlsErr.message}`);
-        outputPath = await downloadHlsViaNode(normalizedVideoUrl, filePath, requestHeaders, cookies);
+        const canonicalManifest = toCanonicalManifestUrl(normalizedVideoUrl);
+
+        if (
+          isSignedJwManifest(normalizedVideoUrl)
+          && canonicalManifest
+          && canonicalManifest !== normalizedVideoUrl
+        ) {
+          // 先使用 signed URL 走 Node 片段下載，僅在明確 403 時才改用 canonical。
+          try {
+            console.log(`    [HLS fallback] 先嘗試 Node 片段下載（signed）：${normalizedVideoUrl}`);
+            outputPath = await downloadHlsViaNode(normalizedVideoUrl, filePath, requestHeaders, cookies);
+          } catch (signedNodeErr) {
+            if (!isHttp403Error(signedNodeErr)) throw signedNodeErr;
+
+            console.log(`    [HLS retry] signed URL 403，改用 canonical manifest：${canonicalManifest}`);
+            try {
+              await downloadHls(canonicalManifest, filePath, requestHeaders, cookies);
+            } catch (canonicalErr) {
+              console.log(`    [HLS retry] canonical ffmpeg 失敗：${canonicalErr.message}`);
+              console.log(`    [HLS fallback] 啟用 Node 片段下載（canonical）：${canonicalManifest}`);
+              outputPath = await downloadHlsViaNode(canonicalManifest, filePath, requestHeaders, cookies);
+            }
+          }
+        } else {
+          console.log(`    [HLS fallback] 啟用 Node 片段下載：${hlsErr.message}`);
+          outputPath = await downloadHlsViaNode(normalizedVideoUrl, filePath, requestHeaders, cookies);
+        }
       }
     } else {
       await downloadMp4(normalizedVideoUrl, filePath, requestHeaders, cookies);

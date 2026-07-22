@@ -55,8 +55,17 @@ function getManifestScore(url) {
   const u = normalizeUrl(url);
   if (!u) return -999;
 
+  const hasSignedQuery = /[?&](exp|sig)=/i.test(u);
+
   // JWPlayer 主清單優先，最穩定
-  if (/cdn\.jwplayer\.com\/manifests\/[^/?#]+\.m3u8(?:\?|$)/i.test(u)) return 100;
+  if (/cdn\.jwplayer\.com\/manifests\/[^/?#]+\.m3u8(?:\?|$)/i.test(u)) {
+    // 帶 exp/sig 的簽名 URL 容易過期，降權讓 canonical 主清單優先
+    return hasSignedQuery ? 95 : 110;
+  }
+  // JWPlayer media endpoint 可回最新可用 manifest，優先於一般 m3u8
+  if (/jwpsrv\.com\/.*\/media\/[a-zA-Z0-9_-]+(?:\?|$)/i.test(u)) {
+    return hasSignedQuery ? 92 : 105;
+  }
   // 明確降權：音軌/視軌子清單常因簽名或相對路徑造成 ffmpeg EOF
   if (/manifest-(audio|video)_/i.test(u)) return 10;
   if (u.includes('/manifest.ism/')) return 20;
@@ -69,6 +78,8 @@ function extractProvideKey(url) {
   const normalized = normalizeUrl(url);
   const m1 = normalized.match(/cdn\.jwplayer\.com\/manifests\/([^/?#]+)\.m3u8/i);
   if (m1) return m1[1];
+  const m0 = normalized.match(/\/([a-zA-Z0-9_-]{6,})\.m3u8(?:\?|$)/i);
+  if (m0) return m0[1];
   const m2 = normalized.match(/\/media\/([^/?#]+)(?:\/|\?|$)/i);
   if (m2) return m2[1];
   return null;
@@ -139,7 +150,11 @@ async function getVideoUrlsFromArticle(page, articleUrl) {
     if (url.includes('prd.jwpltx.com')) return false;           // JW ping tracker
     if (url.includes('ping.gif')) return false;
     if (/\.(ts|m4s|aac|gif|png|jpg)(\?|$)/i.test(url)) return false;  // HLS 片段
-    return url.includes('.m3u8') || url.includes('cdn.jwplayer.com/manifests/');
+    return (
+      url.includes('.m3u8')
+      || url.includes('cdn.jwplayer.com/manifests/')
+      || /jwpsrv\.com\/.*\/media\/[a-zA-Z0-9_-]+(?:\?|$)/i.test(url)
+    );
   };
 
   const responseHandler = (res) => {

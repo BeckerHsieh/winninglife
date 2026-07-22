@@ -30,11 +30,43 @@ node index.js --article https://scantrader.com/article/019efe1021b30000122cdd000
 下載完成後會顯示檔案大小與影片時長，例如：`[完成] 0001_xxx.mp4 (512.3 MB, 34:02)`
 可用這行快速確認是否抓到完整影片（例如你這支約 34 分鐘）。
 
-若遠端 HLS 因 ffmpeg 與 CDN/TLS 相容性導致 mp4 封裝失敗，程式會自動保留完整 `.ts` 檔，仍會顯示實際時長，可直接播放或再自行轉檔。
+若遠端 HLS 因 ffmpeg 與 CDN/TLS 相容性導致 mp4 封裝失敗，程式仍會改走 `.ts` 暫存與後處理流程，但後處理完成後不保留原始影像檔。
 
 ### 顯示瀏覽器視窗（方便除錯）
 ```bash
 node index.js --no-headless
+```
+
+### 獨立腳本：SRT 彙整
+```bash
+node summarize-srt.js <srt檔案或資料夾> [輸出md檔]
+```
+
+PowerShell 路徑若包含 `#`、`(`、`)`、空白，請用單引號包住參數：
+```bash
+node .\summarize-srt.js '.\downloads\0001_xxx\asr' 'xx.md'
+```
+
+### 獨立腳本：簡報擷取（mp4/ts）
+```bash
+node extract-slides.js <mp4/ts檔案或資料夾>
+```
+
+PowerShell 同樣建議：
+```bash
+node .\extract-slides.js '.\downloads\0001_xxx.ts'
+```
+
+### 獨立腳本：批次處理影片 + 對應 SRT + 總索引
+```bash
+node batch-media-process.js <資料夾或影片檔> [索引md輸出路徑]
+```
+
+也可使用 npm scripts：
+```bash
+npm run summarize-srt -- <路徑>
+npm run extract-slides -- <路徑>
+npm run batch-process -- <路徑>
 ```
 
 ### 透過環境變數傳入帳密（CI/自動化用）
@@ -52,12 +84,7 @@ node index.js
 
 ## 下載位置
 
-所有影片存放於 `downloads/` 資料夾，命名格式：
-```
-0001_文章標題.mp4
-0002_文章標題.mp4
-...
-```
+後處理完成後，不保留原始 `.mp4` / `.ts` 影片檔；`downloads/` 主要保留以下產物：
 
 每支影片下載後，會額外產生：
 

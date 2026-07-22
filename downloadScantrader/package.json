@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "install-browser": "npx playwright install chromium"
+    "install-browser": "npx playwright install chromium",
+    "summarize-srt": "node summarize-srt.js",
+    "extract-slides": "node extract-slides.js",
+    "batch-process": "node batch-media-process.js"
   },
   "dependencies": {
     "axios": "^1.7.2",
