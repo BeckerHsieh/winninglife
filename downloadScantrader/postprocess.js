@@ -14,7 +14,7 @@ const { chromium } = require('playwright');
 
 let tesseractModule = null;
 
-const SLIDE_MAX_FRAMES = Number(process.env.SLIDE_MAX_FRAMES || 300);
+const SLIDE_MAX_FRAMES = Number(process.env.SLIDE_MAX_FRAMES || 200);
 const SLIDE_MIN_FRAMES = Number(process.env.SLIDE_MIN_FRAMES || 200);
 const SLIDE_FALLBACK_INTERVAL_SECONDS = Number(process.env.SLIDE_FALLBACK_INTERVAL_SECONDS || 5);
 const WHISPER_MODEL = process.env.WHISPER_MODEL || 'small';
@@ -912,11 +912,14 @@ async function extractSlideFrames(videoPath, videoWorkDir, outputDir) {
       throw new Error('無法取得影片長度，無法擷取瀏覽器截圖');
     }
 
-    const targetFrames = Math.max(1, Math.min(SLIDE_MAX_FRAMES, SLIDE_MIN_FRAMES));
-    const idealInterval = Math.max(1, Math.min(SLIDE_FALLBACK_INTERVAL_SECONDS, Math.ceil(videoDuration / targetFrames)));
+    const minFrames = Math.max(1, Math.floor(SLIDE_MIN_FRAMES));
+    const maxFrames = Math.max(minFrames, Math.floor(SLIDE_MAX_FRAMES));
+    const targetFrames = maxFrames;
+    const evenlySpacedInterval = videoDuration / Math.max(1, targetFrames - 1);
+    const idealInterval = Math.max(1, Math.min(SLIDE_FALLBACK_INTERVAL_SECONDS, evenlySpacedInterval));
     const captureCount = Math.min(
-      SLIDE_MAX_FRAMES,
-      Math.max(targetFrames, Math.ceil(videoDuration / idealInterval) + 1)
+      maxFrames,
+      Math.max(minFrames, Math.ceil(videoDuration / idealInterval) + 1)
     );
     const captureTimes = Array.from({ length: captureCount }, (_v, i) => {
       if (captureCount === 1) return 0;

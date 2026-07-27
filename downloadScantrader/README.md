@@ -39,27 +39,40 @@ node index.js --no-headless
 
 ### 獨立腳本：SRT 彙整
 ```bash
-node summarize-srt.js <srt檔案或資料夾> [輸出md檔]
+node .\downloadScantrader\summarize-srt.js <srt檔案或資料夾> [輸出md檔]
 ```
 
 PowerShell 路徑若包含 `#`、`(`、`)`、空白，請用單引號包住參數：
 ```bash
-node .\summarize-srt.js '.\downloads\0001_xxx\asr' 'xx.md'
+node .\downloadScantrader\summarize-srt.js '.\downloads\0001_xxx\asr' 'xx.md'
 ```
 
 ### 獨立腳本：簡報擷取（mp4/ts）
 ```bash
-node extract-slides.js <mp4/ts檔案或資料夾>
+node .\downloadScantrader\extract-slides.js <mp4/ts檔案或資料夾>
 ```
 
 PowerShell 同樣建議：
 ```bash
-node .\extract-slides.js '.\downloads\0001_xxx.ts'
+node .\downloadScantrader\extract-slides.js '.\downloads\0001_xxx.ts'
+```
+
+可直接指定擷取張數參數（不依賴環境變數）：
+```bash
+node .\downloadScantrader\extract-slides.js '.\downloadScantrader\downloads\0001_xxx.ts' --max-frames 800 --min-frames 600 --interval 1
+```
+
+若要在 PowerShell 設定環境變數，請用：
+```bash
+$env:SLIDE_MAX_FRAMES='800'
+$env:SLIDE_MIN_FRAMES='600'
+$env:SLIDE_FALLBACK_INTERVAL_SECONDS='1'
+node .\downloadScantrader\extract-slides.js '.\downloadScantrader\downloads\0001_xxx.ts'
 ```
 
 ### 獨立腳本：批次處理影片 + 對應 SRT + 總索引
 ```bash
-node batch-media-process.js <資料夾或影片檔> [索引md輸出路徑]
+node .\downloadScantrader\batch-media-process.js <資料夾或影片檔> [索引md輸出路徑]
 ```
 
 也可使用 npm scripts：
@@ -133,7 +146,12 @@ set SLIDE_FALLBACK_INTERVAL_SECONDS=5
 可用環境變數調整簡報擷取張數：
 
 ```bash
-set SLIDE_MAX_FRAMES=300
+set SLIDE_MAX_FRAMES=200
+```
+
+PowerShell 寫法：
+```bash
+$env:SLIDE_MAX_FRAMES='200'
 ```
 
 - `SLIDE_MIN_FRAMES`：瀏覽器截圖流程期望至少擷取的張數
