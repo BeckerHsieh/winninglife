@@ -110,9 +110,83 @@ function headersToString(headers = {}) {
     .join('');
 }
 
+function upsertHeaderCaseInsensitive(headers = {}, key, value) {
+  if (!key) return headers;
+  const out = { ...headers };
+  const hit = Object.keys(out).find((k) => k.toLowerCase() === String(key).toLowerCase());
+  if (hit) out[hit] = value;
+  else out[key] = value;
+  return out;
+}
+
+function deriveHeadersForResource(baseHeaders = {}, refererUrl = '') {
+  let out = { ...baseHeaders };
+  if (!refererUrl) return out;
+
+  out = upsertHeaderCaseInsensitive(out, 'Referer', refererUrl);
+  try {
+    const u = new URL(refererUrl);
+    out = upsertHeaderCaseInsensitive(out, 'Origin', `${u.protocol}//${u.host}`);
+  } catch {}
+  return out;
+}
+
 async function fetchText(url, headers) {
   const res = await axios.get(url, { timeout: 30000, headers, responseType: 'text' });
   return String(res.data || '');
+}
+
+async function getJwSignedManifestCandidate(url, headers) {
+  const id = getJwplayerManifestId(url);
+  if (!id) return null;
+
+  try {
+    const apiUrl = `https://cdn.jwplayer.com/v2/media/${id}`;
+    const apiHeaders = upsertHeaderCaseInsensitive(headers, 'Accept', 'application/json,text/plain,*/*');
+    const res = await axios.get(apiUrl, { timeout: 30000, headers: apiHeaders, responseType: 'json' });
+    const data = res && res.data ? res.data : {};
+
+    const sources = [];
+    if (Array.isArray(data.sources)) sources.push(...data.sources);
+    if (Array.isArray(data.playlist) && data.playlist[0] && Array.isArray(data.playlist[0].sources)) {
+      sources.push(...data.playlist[0].sources);
+    }
+
+    const candidates = sources
+      .map((s) => (s && typeof s.file === 'string' ? normalizeMediaUrl(s.file) : ''))
+      .filter((u) => /\.m3u8(\?|$)/i.test(u));
+
+    if (candidates.length === 0) return null;
+    const scored = candidates
+      .map((u) => ({
+        url: u,
+        score: (/[?&](exp|sig)=/i.test(u) ? 100 : 0) + (u.includes('/manifests/') ? 10 : 0),
+      }))
+      .sort((a, b) => b.score - a.score);
+    return scored[0].url || null;
+  } catch {
+    return null;
+  }
+}
+
+async function buildManifestCandidates(url, headers) {
+  const normalized = normalizeMediaUrl(url);
+  const candidates = [normalized];
+
+  const canonical = toCanonicalManifestUrl(normalized);
+  if (canonical && canonical !== normalized) candidates.push(canonical);
+
+  const freshSigned = await getJwSignedManifestCandidate(normalized, headers);
+  if (freshSigned) candidates.push(freshSigned);
+
+  const deduped = [];
+  const seen = new Set();
+  for (const c of candidates) {
+    if (!c || seen.has(c)) continue;
+    seen.add(c);
+    deduped.push(c);
+  }
+  return deduped;
 }
 
 async function fetchTextWithJwFallback(url, headers) {
@@ -196,9 +270,10 @@ async function materializeLocalPlaylist(mediaText, mediaPlaylistUrl, tempDir, he
     const filename = `seg_${String(segIndex).padStart(5, '0')}${ext}`;
     const filepath = path.join(tempDir, filename);
 
+    const segmentHeaders = deriveHeadersForResource(headers, mediaPlaylistUrl);
     const res = await axios.get(segUrl, {
       timeout: 60000,
-      headers,
+      headers: segmentHeaders,
       responseType: 'arraybuffer',
     });
     await fs.writeFile(filepath, Buffer.from(res.data));
@@ -223,7 +298,8 @@ async function materializeWithSegmentRetry(mediaText, mediaPlaylistUrl, tempDir,
     if (status !== 403) throw err;
 
     // 某些簽名片段會短時過期，重抓同一 media playlist 後再試一次。
-    const refreshedMediaText = await fetchText(mediaPlaylistUrl, headers);
+    const refreshedMediaHeaders = deriveHeadersForResource(headers, mediaPlaylistUrl);
+    const refreshedMediaText = await fetchText(mediaPlaylistUrl, refreshedMediaHeaders);
     return materializeLocalPlaylist(refreshedMediaText, mediaPlaylistUrl, tempDir, headers);
   }
 }
@@ -291,40 +367,58 @@ function remuxPlaylistToMp4(localPlaylistPath, outPath) {
 
 async function downloadHlsViaNode(url, filePath, requestHeaders = {}, cookies = []) {
   const headers = buildRequestHeaders(requestHeaders, cookies, url);
-  const masterResolved = await fetchTextWithJwFallback(url, headers);
-  const masterText = masterResolved.text;
+  const manifestCandidates = await buildManifestCandidates(url, headers);
+  let lastError = null;
 
-  let mediaPlaylistUrl = masterResolved.resolvedUrl;
-  let mediaText = masterText;
-
-  if (masterText.includes('#EXT-X-STREAM-INF')) {
-    const variants = parseMasterPlaylist(masterText, mediaPlaylistUrl);
-    if (!variants.length) throw new Error('主清單無可用變體');
-    variants.sort((a, b) => b.bandwidth - a.bandwidth);
-    mediaPlaylistUrl = variants[0].url;
-    mediaText = await fetchText(mediaPlaylistUrl, headers);
-  }
-
-  const segments = parseMediaPlaylist(mediaText, mediaPlaylistUrl);
-  if (!segments.length) throw new Error('媒體清單無片段');
-
-  const tempDir = path.join(os.tmpdir(), `scantrader_hls_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
-  await fs.remove(tempDir).catch(() => {});
-  try {
-    const { localPlaylistPath, segmentFiles } = await materializeWithSegmentRetry(mediaText, mediaPlaylistUrl, tempDir, headers);
-    try {
-      await remuxPlaylistToMp4(localPlaylistPath, filePath);
-      return filePath;
-    } catch (remuxErr) {
-      // 若 mp4 封裝失敗，退而求其次保留完整 TS，避免整次下載失敗
-      const tsPath = await uniqueFilePath(path.dirname(filePath), path.parse(filePath).name, 'ts');
-      console.log(`    [HLS fallback] MP4 封裝失敗，改輸出 TS：${path.basename(tsPath)}`);
-      await concatSegmentFilesToTs(segmentFiles, tsPath);
-      return tsPath;
+  for (let ci = 0; ci < manifestCandidates.length; ci++) {
+    const candidate = manifestCandidates[ci];
+    const from = normalizeMediaUrl(url);
+    if (candidate !== from) {
+      console.log(`    [HLS fallback] 改用候選 manifest #${ci + 1}: ${candidate}`);
     }
-  } finally {
+
+    const tempDir = path.join(os.tmpdir(), `scantrader_hls_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
     await fs.remove(tempDir).catch(() => {});
+    try {
+      const masterHeaders = deriveHeadersForResource(headers, 'https://scantrader.com/');
+      const masterText = await fetchText(candidate, masterHeaders);
+
+      let mediaPlaylistUrl = candidate;
+      let mediaText = masterText;
+
+      if (masterText.includes('#EXT-X-STREAM-INF')) {
+        const variants = parseMasterPlaylist(masterText, mediaPlaylistUrl);
+        if (!variants.length) throw new Error('主清單無可用變體');
+        variants.sort((a, b) => b.bandwidth - a.bandwidth);
+        mediaPlaylistUrl = variants[0].url;
+        const mediaHeaders = deriveHeadersForResource(headers, candidate);
+        mediaText = await fetchText(mediaPlaylistUrl, mediaHeaders);
+      }
+
+      const segments = parseMediaPlaylist(mediaText, mediaPlaylistUrl);
+      if (!segments.length) throw new Error('媒體清單無片段');
+
+      const { localPlaylistPath, segmentFiles } = await materializeWithSegmentRetry(mediaText, mediaPlaylistUrl, tempDir, headers);
+      try {
+        await remuxPlaylistToMp4(localPlaylistPath, filePath);
+        return filePath;
+      } catch (remuxErr) {
+        // 若 mp4 封裝失敗，退而求其次保留完整 TS，避免整次下載失敗
+        const tsPath = await uniqueFilePath(path.dirname(filePath), path.parse(filePath).name, 'ts');
+        console.log(`    [HLS fallback] MP4 封裝失敗，改輸出 TS：${path.basename(tsPath)}`);
+        await concatSegmentFilesToTs(segmentFiles, tsPath);
+        return tsPath;
+      }
+    } catch (err) {
+      lastError = err;
+      if (!isHttp403Error(err)) throw err;
+      console.log(`    [HLS fallback] 候選 manifest 403：${candidate}`);
+    } finally {
+      await fs.remove(tempDir).catch(() => {});
+    }
   }
+
+  throw lastError || new Error('HLS Node fallback 失敗');
 }
 
 // ── Cookie header ────────────────────────────────────────────────────────────
