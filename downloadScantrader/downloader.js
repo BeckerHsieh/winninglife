@@ -136,9 +136,9 @@ async function fetchText(url, headers) {
   return String(res.data || '');
 }
 
-async function getJwSignedManifestCandidate(url, headers) {
+async function getJwMediaSources(url, headers) {
   const id = getJwplayerManifestId(url);
-  if (!id) return null;
+  if (!id) return [];
 
   try {
     const apiUrl = `https://cdn.jwplayer.com/v2/media/${id}`;
@@ -151,7 +151,15 @@ async function getJwSignedManifestCandidate(url, headers) {
     if (Array.isArray(data.playlist) && data.playlist[0] && Array.isArray(data.playlist[0].sources)) {
       sources.push(...data.playlist[0].sources);
     }
+    return sources;
+  } catch {
+    return [];
+  }
+}
 
+async function getJwSignedManifestCandidate(url, headers) {
+  try {
+    const sources = await getJwMediaSources(url, headers);
     const candidates = sources
       .map((s) => (s && typeof s.file === 'string' ? normalizeMediaUrl(s.file) : ''))
       .filter((u) => /\.m3u8(\?|$)/i.test(u));
@@ -169,9 +177,90 @@ async function getJwSignedManifestCandidate(url, headers) {
   }
 }
 
-async function buildManifestCandidates(url, headers) {
+async function getJwProgressiveMp4Candidates(url, headers) {
+  const sources = await getJwMediaSources(url, headers);
+  if (!sources.length) return [];
+
+  const mapped = sources
+    .map((s) => {
+      const file = s && typeof s.file === 'string' ? normalizeMediaUrl(s.file) : '';
+      if (!file) return null;
+      const type = String((s && s.type) || '').toLowerCase();
+      const isMp4 = type.includes('video/mp4') || /\.mp4(\?|$)/i.test(file);
+      if (!isMp4) return null;
+      return {
+        url: file,
+        width: Number((s && s.width) || 0),
+        height: Number((s && s.height) || 0),
+      };
+    })
+    .filter(Boolean);
+
+  mapped.sort((a, b) => {
+    const areaA = a.width * a.height;
+    const areaB = b.width * b.height;
+    return areaB - areaA;
+  });
+
+  const deduped = [];
+  const seen = new Set();
+  for (const item of mapped) {
+    if (!item.url || seen.has(item.url)) continue;
+    seen.add(item.url);
+    deduped.push(item.url);
+  }
+  return deduped;
+}
+
+async function downloadJwProgressiveFallback(url, filePath, requestHeaders = {}, cookies = [], preferredCandidates = []) {
+  const headers = buildRequestHeaders(requestHeaders, cookies, url);
+  const apiCandidates = await getJwProgressiveMp4Candidates(url, headers);
+  const candidates = [];
+  for (const c of preferredCandidates || []) {
+    const normalized = normalizeMediaUrl(c);
+    if (normalized && /\.mp4(\?|$)/i.test(normalized)) candidates.push(normalized);
+  }
+  for (const c of apiCandidates) candidates.push(c);
+
+  const orderedCandidates = [];
+  const seen = new Set();
+  for (const c of candidates) {
+    if (!c || seen.has(c)) continue;
+    seen.add(c);
+    orderedCandidates.push(c);
+  }
+
+  if (!orderedCandidates.length) {
+    throw new Error('找不到可用的 JWPlayer MP4 來源');
+  }
+
+  let lastError = null;
+  for (let i = 0; i < orderedCandidates.length; i++) {
+    const candidate = orderedCandidates[i];
+    try {
+      console.log(`    [HLS fallback] 改抓 MP4 候選 #${i + 1}: ${candidate}`);
+      await fs.remove(filePath).catch(() => {});
+      await downloadMp4(candidate, filePath, headers, cookies);
+      return filePath;
+    } catch (err) {
+      lastError = err;
+      console.log(`    [HLS fallback] MP4 候選失敗：${err.message}`);
+    }
+  }
+
+  throw lastError || new Error('MP4 fallback 失敗');
+}
+
+async function buildManifestCandidates(url, headers, extraCandidates = []) {
   const normalized = normalizeMediaUrl(url);
   const candidates = [normalized];
+
+  for (const c of extraCandidates || []) {
+    const normalizedExtra = normalizeMediaUrl(c);
+    if (!normalizedExtra) continue;
+    if (!/\.m3u8(\?|$)/i.test(normalizedExtra)) continue;
+    candidates.push(normalizedExtra);
+  }
 
   const canonical = toCanonicalManifestUrl(normalized);
   if (canonical && canonical !== normalized) candidates.push(canonical);
@@ -365,9 +454,9 @@ function remuxPlaylistToMp4(localPlaylistPath, outPath) {
   });
 }
 
-async function downloadHlsViaNode(url, filePath, requestHeaders = {}, cookies = []) {
+async function downloadHlsViaNode(url, filePath, requestHeaders = {}, cookies = [], extraManifestCandidates = []) {
   const headers = buildRequestHeaders(requestHeaders, cookies, url);
-  const manifestCandidates = await buildManifestCandidates(url, headers);
+  const manifestCandidates = await buildManifestCandidates(url, headers, extraManifestCandidates);
   let lastError = null;
 
   for (let ci = 0; ci < manifestCandidates.length; ci++) {
@@ -570,6 +659,13 @@ async function downloadVideo(videoUrl, articleTitle, index, cookies = []) {
   const video = typeof videoUrl === 'string' ? { url: videoUrl, headers: {} } : (videoUrl || {});
   const normalizedVideoUrl = normalizeMediaUrl(video.url);
   const requestHeaders = video.headers || {};
+  const alternateItems = Array.isArray(video.alternates) ? video.alternates : [];
+  const alternateManifestCandidates = alternateItems
+    .map((item) => (item && typeof item.url === 'string' ? normalizeMediaUrl(item.url) : ''))
+    .filter((u) => /\.m3u8(\?|$)/i.test(u));
+  const alternateMp4Candidates = alternateItems
+    .map((item) => (item && typeof item.url === 'string' ? normalizeMediaUrl(item.url) : ''))
+    .filter((u) => /\.mp4(\?|$)/i.test(u));
 
   const isHls = isHlsUrl(normalizedVideoUrl);
   const ext = isHls ? 'mp4' : (['mp4','mov','webm','m4v'].find(
@@ -591,32 +687,38 @@ async function downloadVideo(videoUrl, articleTitle, index, cookies = []) {
       try {
         await downloadHls(normalizedVideoUrl, filePath, requestHeaders, cookies);
       } catch (hlsErr) {
-        const canonicalManifest = toCanonicalManifestUrl(normalizedVideoUrl);
+        try {
+          const canonicalManifest = toCanonicalManifestUrl(normalizedVideoUrl);
 
-        if (
-          isSignedJwManifest(normalizedVideoUrl)
-          && canonicalManifest
-          && canonicalManifest !== normalizedVideoUrl
-        ) {
-          // 先使用 signed URL 走 Node 片段下載，僅在明確 403 時才改用 canonical。
-          try {
-            console.log(`    [HLS fallback] 先嘗試 Node 片段下載（signed）：${normalizedVideoUrl}`);
-            outputPath = await downloadHlsViaNode(normalizedVideoUrl, filePath, requestHeaders, cookies);
-          } catch (signedNodeErr) {
-            if (!isHttp403Error(signedNodeErr)) throw signedNodeErr;
-
-            console.log(`    [HLS retry] signed URL 403，改用 canonical manifest：${canonicalManifest}`);
+          if (
+            isSignedJwManifest(normalizedVideoUrl)
+            && canonicalManifest
+            && canonicalManifest !== normalizedVideoUrl
+          ) {
+            // 先使用 signed URL 走 Node 片段下載，僅在明確 403 時才改用 canonical。
             try {
-              await downloadHls(canonicalManifest, filePath, requestHeaders, cookies);
-            } catch (canonicalErr) {
-              console.log(`    [HLS retry] canonical ffmpeg 失敗：${canonicalErr.message}`);
-              console.log(`    [HLS fallback] 啟用 Node 片段下載（canonical）：${canonicalManifest}`);
-              outputPath = await downloadHlsViaNode(canonicalManifest, filePath, requestHeaders, cookies);
+              console.log(`    [HLS fallback] 先嘗試 Node 片段下載（signed）：${normalizedVideoUrl}`);
+              outputPath = await downloadHlsViaNode(normalizedVideoUrl, filePath, requestHeaders, cookies, alternateManifestCandidates);
+            } catch (signedNodeErr) {
+              if (!isHttp403Error(signedNodeErr)) throw signedNodeErr;
+
+              console.log(`    [HLS retry] signed URL 403，改用 canonical manifest：${canonicalManifest}`);
+              try {
+                await downloadHls(canonicalManifest, filePath, requestHeaders, cookies);
+              } catch (canonicalErr) {
+                console.log(`    [HLS retry] canonical ffmpeg 失敗：${canonicalErr.message}`);
+                console.log(`    [HLS fallback] 啟用 Node 片段下載（canonical）：${canonicalManifest}`);
+                outputPath = await downloadHlsViaNode(canonicalManifest, filePath, requestHeaders, cookies, alternateManifestCandidates);
+              }
             }
+          } else {
+            console.log(`    [HLS fallback] 啟用 Node 片段下載：${hlsErr.message}`);
+            outputPath = await downloadHlsViaNode(normalizedVideoUrl, filePath, requestHeaders, cookies, alternateManifestCandidates);
           }
-        } else {
-          console.log(`    [HLS fallback] 啟用 Node 片段下載：${hlsErr.message}`);
-          outputPath = await downloadHlsViaNode(normalizedVideoUrl, filePath, requestHeaders, cookies);
+        } catch (fallbackErr) {
+          // 若 HLS（含 canonical/signed/node）都失敗，最後改抓 JWPlayer 提供的 progressive mp4。
+          console.log(`    [HLS fallback] HLS 路徑失敗，嘗試 MP4 來源：${fallbackErr.message}`);
+          outputPath = await downloadJwProgressiveFallback(normalizedVideoUrl, filePath, requestHeaders, cookies, alternateMp4Candidates);
         }
       }
     } else {

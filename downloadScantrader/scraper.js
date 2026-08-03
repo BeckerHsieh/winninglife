@@ -57,14 +57,15 @@ function getManifestScore(url) {
 
   const hasSignedQuery = /[?&](exp|sig)=/i.test(u);
 
-  // JWPlayer 主清單優先，最穩定
+  // JWPlayer 主清單優先。
+  // 實務上 canonical（無 exp/sig）常在 server 端被 403，
+  // 因此同為 manifest 時，優先 signed URL 再退回 canonical。
   if (/cdn\.jwplayer\.com\/manifests\/[^/?#]+\.m3u8(?:\?|$)/i.test(u)) {
-    // 帶 exp/sig 的簽名 URL 容易過期，降權讓 canonical 主清單優先
-    return hasSignedQuery ? 95 : 110;
+    return hasSignedQuery ? 120 : 100;
   }
   // JWPlayer media endpoint 可回最新可用 manifest，優先於一般 m3u8
   if (/jwpsrv\.com\/.*\/media\/[a-zA-Z0-9_-]+(?:\?|$)/i.test(u)) {
-    return hasSignedQuery ? 92 : 105;
+    return hasSignedQuery ? 115 : 98;
   }
   // 明確降權：音軌/視軌子清單常因簽名或相對路徑造成 ffmpeg EOF
   if (/manifest-(audio|video)_/i.test(u)) return 10;
@@ -264,14 +265,24 @@ async function getVideoUrlsFromArticle(page, articleUrl) {
   const masters = result.filter((item) => getManifestScore(item.url) >= 100);
   const selected = masters.length > 0 ? masters : result;
 
-  // 以 provideKey 去重，避免同一影片出現多個等價來源
-  const seenKeys = new Set();
-  const deduped = [];
+  // 以 provideKey 分組：每組保留一個主來源 + 多個 alternates 供下載器 fallback。
+  const groups = new Map();
   for (const item of selected) {
     const key = extractProvideKey(item.url) || item.url;
-    if (seenKeys.has(key)) continue;
-    seenKeys.add(key);
-    deduped.push(item);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  }
+
+  const deduped = [];
+  for (const [_key, items] of groups.entries()) {
+    items.sort((a, b) => getManifestScore(b.url) - getManifestScore(a.url));
+    const primary = items[0];
+    const alternates = items.slice(1);
+    deduped.push({
+      url: primary.url,
+      headers: primary.headers || {},
+      alternates,
+    });
   }
 
   if (deduped.length > 0) {
