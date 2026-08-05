@@ -75,6 +75,21 @@ node .\downloadScantrader\extract-slides.js '.\downloadScantrader\downloads\0001
 node .\downloadScantrader\batch-media-process.js <資料夾或影片檔> [索引md輸出路徑]
 ```
 
+### 獨立腳本：YouTube 受限影片下載（Cookie）
+```bash
+node .\downloadScantrader\yt-private-download.js --cookies-file .\downloadScantrader\.session\yt-cookies.txt <youtube-url>
+```
+
+僅列格式（建議先執行，確認可用格式）：
+```bash
+node .\downloadScantrader\yt-private-download.js --cookies-file .\downloadScantrader\.session\yt-cookies.txt --list-formats <youtube-url>
+```
+
+若看到 `n challenge solving failed` 或 `Only images are available`：
+- 先更新 yt-dlp：`pip install -U yt-dlp`
+- 腳本已內建 `--remote-components ejs:github`，首次可能會自動下載 challenge solver
+- 若仍失敗，多半是 YouTube 對帳號/區域的臨時限制，可先用 `--list-formats` 檢查是否仍只有 `sb*` 圖片格式
+
 也可使用 npm scripts：
 ```bash
 npm run summarize-srt -- <路徑>
