@@ -1059,9 +1059,16 @@ async function processDownloadedVideo(filePath) {
   const videoWorkDir = path.join(outputDir, baseName);
   await fs.ensureDir(videoWorkDir);
 
+  const skipAsr = process.env.SKIP_ASR === '1';
+  const skipStocks = process.env.SKIP_STOCKS === '1';
+
   try {
-    const subtitle = await generateSubtitleMarkdown(filePath, videoWorkDir, baseName).catch((err) => ({ ok: false, reason: err.message }));
-    const slide = await processSlidesAndExtractStocks(filePath, videoWorkDir, baseName).catch((err) => ({ ok: false, reason: err.message, mentions: [] }));
+    const subtitle = skipAsr
+      ? { ok: false, reason: 'SKIP_ASR=1' }
+      : await generateSubtitleMarkdown(filePath, videoWorkDir, baseName).catch((err) => ({ ok: false, reason: err.message }));
+
+    let slide = await processSlidesAndExtractStocks(filePath, videoWorkDir, baseName).catch((err) => ({ ok: false, reason: err.message, mentions: [] }));
+    if (skipStocks && slide && slide.mentions) slide = { ...slide, mentions: [] };
 
     return {
       videoPath: filePath,

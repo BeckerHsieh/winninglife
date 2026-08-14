@@ -8,7 +8,7 @@ if "%~1"=="" (
 )
 
 set "URL=%~1"
-set SLIDE_MAX_FRAMES=600
+set SLIDE_MAX_FRAMES=1200
 
 set "VIDEO_ID="
 for /f "tokens=2 delims==" %%A in ("%URL%") do set "VIDEO_ID=%%A"
@@ -18,3 +18,12 @@ if defined VIDEO_ID (
 )
 
 node ./downloadScantrader/yt-private-download.js --cookies-file .\downloadScantrader\.session\yt-cookies.txt "!URL!"
+
+if %ERRORLEVEL% EQU 0 (
+    echo.
+    echo [簡報擷取] 開始處理下載目錄中的影片...
+    node ./downloadScantrader/extract-slides.js ./downloadScantrader/downloads
+) else (
+    echo 下載失敗，跳過簡報擷取
+    exit /b 1
+)

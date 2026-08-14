@@ -177,3 +177,123 @@ $env:SLIDE_MAX_FRAMES='200'
 - HLS 串流（`.m3u8`）需安裝 `ffmpeg` 才能下載
 - 若無法登入，可加上 `--no-headless` 觀察瀏覽器行為
 - 除錯截圖會存放在 `debug-*.png`
+
+---
+
+## 架構規格（Spec）
+
+### 模組清單與職責
+
+| 檔案 | 職責 |
+|------|------|
+| `index.js` | 主程式：CLI 解析、登入、文章列表、下載調度、後處理協調 |
+| `login.js` | Playwright 登入 + session 持久化（`.session/auth.json`）|
+| `scraper.js` | 取得頻道所有文章 URL；從文章頁面攔截真實影片 URL |
+| `downloader.js` | 下載影片：HLS（ffmpeg）或直連 mp4（axios）|
+| `postprocess.js` | 後處理三管線：ASR 字幕、簡報擷取、股票 OCR 彙整 |
+| `extract-slides.js` | 獨立執行的簡報擷取腳本（可對資料夾批次處理）|
+| `summarize-srt.js` | 獨立執行的 SRT 彙整腳本，輸出 Markdown |
+| `batch-media-process.js` | 批次後處理：影片 + SRT + 總索引 |
+| `yt-private-download.js` | YouTube 受限影片下載（Cookie + yt-dlp）|
+
+---
+
+### 完整處理流程
+
+```
+runDownload.bat
+│
+├─ node index.js --article <url>
+│   │
+│   ├─ [1] 前置檢查  checkAsrPreflight()          ← postprocess.js
+│   │       ├─ ffmpeg 是否存在（ffmpeg-static 或系統）
+│   │       └─ Whisper 是否可用（CLI / py -m whisper / python -m whisper）
+│   │
+│   ├─ [2] 登入      login()                       ← login.js
+│   │       ├─ 讀取 .session/auth.json（有效時跳過輸入）
+│   │       └─ Playwright Chromium 登入 scantrader.com
+│   │
+│   ├─ [3] 爬取      getArticleUrls()              ← scraper.js
+│   │       └─ 頻道模式：掃描 /u/77340 取得所有文章 URL
+│   │           （單篇模式：直接使用 --article 參數）
+│   │
+│   ├─ [4] 解析影片  getVideoUrlsFromArticle()     ← scraper.js
+│   │       ├─ 攔截 Response content-type 判定影片 URL
+│   │       ├─ 依 manifest score 排序（JWPlayer signed > canonical > m3u8 > mp4）
+│   │       └─ 去重（同 provider key 只保留最高分）
+│   │
+│   ├─ [5] 下載      downloadVideo()               ← downloader.js
+│   │       ├─ HLS（.m3u8）→ ffmpeg -c copy 輸出 .mp4
+│   │       │   ├─ 失敗時嘗試多組 ffmpeg 參數組合
+│   │       │   └─ 最終 fallback 輸出 .ts 暫存
+│   │       ├─ 直連 mp4 → axios stream 寫檔
+│   │       ├─ 403 / EOF 錯誤 → 重新解析文章取新 URL 後重試
+│   │       └─ 已存在同名檔案 → 略過（skipped）
+│   │
+│   └─ [6] 後處理    processDownloadedVideo()      ← postprocess.js
+│           │
+│           ├─ [6a] ASR 字幕
+│           │       ├─ ffmpeg 抽音訊 → audio.wav
+│           │       ├─ whisper CLI 或 python -m whisper → asr/*.srt
+│           │       ├─ 解析 SRT → timeline[]
+│           │       ├─ buildSubtitleSummary() 抽出重點句（最多 8 條）
+│           │       └─ 輸出 {baseName}_字幕文字.md
+│           │
+│           ├─ [6b] 簡報擷取
+│           │       ├─ 主流程：Playwright 開啟本機 video URL
+│           │       │   ├─ .ts 需先 ffmpeg → browser_preview.mp4
+│           │       │   ├─ 依時間軸 seek → 截圖暫存至 slides_tmp/
+│           │       │   └─ 目標張數 SLIDE_MIN_FRAMES（預設 200）
+│           │       ├─ fallback：ffmpeg fps=1/N 抽幀（SLIDE_FALLBACK_INTERVAL_SECONDS）
+│           │       ├─ OCR（tesseract.js）辨識每張截圖文字
+│           │       ├─ 過濾非中文、UI 浮水印、重複畫面
+│           │       └─ 輸出 downloads/slides/YYYYMMDD_NNNNN.jpg
+│           │
+│           └─ [6c] 股票彙整
+│                   ├─ 從 OCR 文字 regex 抽取台股代碼+名稱
+│                   ├─ 每集彙整 mentions[]
+│                   └─ writeStockMarkdowns() → downloads/stocks/{代碼名稱}.md
+│
+└─ node extract-slides.js ./downloadScantrader/downloads   （下載成功後執行）
+        └─ 對 downloads/ 資料夾內所有影片再次執行簡報擷取
+```
+
+---
+
+### 輸出產物對應
+
+| 管線 | 輸出路徑 | 說明 |
+|------|----------|------|
+| ASR 字幕 | `downloads/{標題}/{標題}_字幕文字.md` | SRT 時間軸 + 重點摘要 |
+| ASR SRT | `downloads/{標題}/asr/*.srt` | Whisper 原始字幕檔 |
+| ASR 錯誤 | `downloads/{標題}/asr/asr_error.log` | 僅 ASR 失敗時產生 |
+| 簡報截圖 | `downloads/slides/YYYYMMDD_NNNNN.jpg` | 所有影片共用同一資料夾 |
+| 股票彙整 | `downloads/stocks/{代碼名稱}.md` | 跨影片累計提及 |
+| 預覽中繼 | `downloads/{標題}/browser_preview.mp4` | TS 轉 mp4 暫存（供 Playwright seek）|
+
+---
+
+### 關鍵環境變數
+
+| 變數 | 預設值 | 說明 |
+|------|--------|------|
+| `SLIDE_MAX_FRAMES` | `200` | 簡報擷取上限張數 |
+| `SLIDE_MIN_FRAMES` | `200` | Playwright seek 流程目標張數 |
+| `SLIDE_FALLBACK_INTERVAL_SECONDS` | `5` | ffmpeg fallback 抽幀間隔（秒）|
+| `WHISPER_MODEL` | `small` | Whisper 模型大小 |
+| `WHISPER_LANGUAGE` | `zh` | ASR 語言 |
+| `SKIP_ASR_PREFLIGHT` | — | 設為 `1` 可略過前置環境檢查 |
+| `SCANTRADER_EMAIL` | — | 帳號（不設則互動輸入）|
+| `SCANTRADER_PASSWORD` | — | 密碼（不設則互動輸入）|
+
+---
+
+### 錯誤處理策略
+
+| 情境 | 處理方式 |
+|------|----------|
+| 下載 403 / EOF | 重新解析文章取新 URL，重試一次 |
+| ffmpeg 封裝失敗 | 降級 fallback 輸出 `.ts` |
+| Playwright 簡報截圖失敗 | ffmpeg fps 抽幀 fallback |
+| ASR 全部 backend 失敗 | 輸出錯誤版字幕 md + asr_error.log，不中止主流程 |
+| Session 過期 | 偵測到後重新要求輸入帳密 |
