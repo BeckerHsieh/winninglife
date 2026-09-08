@@ -541,6 +541,10 @@ function safeFilename(name) {
   return name.replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, '_');
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // ── 下載 mp4 直連 ────────────────────────────────────────────────────────────
 async function downloadMp4(url, filePath, requestHeaders = {}, cookies = []) {
   const writer = fs.createWriteStream(filePath);
@@ -611,6 +615,11 @@ function downloadHls(url, filePath, requestHeaders = {}, cookies = []) {
         '-max_interleave_delta', '0', filePath],
     ];
 
+    // 若因串流末端時間戳記損毀而失敗，但已寫出足量資料，直接採用該部分輸出，
+    // 避免整段重新拉流反覆命中 CDN 而觸發 403（簽名 URL 可能有請求次數限制）。
+    const PARTIAL_MIN_BYTES = 15 * 1024 * 1024;
+    const isAuthFailure = (text) => /403|forbidden|access denied|401|unauthorized/i.test(text);
+
     const tryNext = (idx) => {
       if (idx >= attempts.length) {
         reject(new Error('ffmpeg 所有嘗試均失敗'));
@@ -622,6 +631,15 @@ function downloadHls(url, filePath, requestHeaders = {}, cookies = []) {
         if (!err) { resolve(); return; }
         const hint = se.slice(-200).replace(/\s+/g, ' ').trim();
         console.log(`    [ffmpeg] #${idx + 1} 失敗：${hint}`);
+
+        if (!isAuthFailure(hint) && fs.existsSync(filePath)) {
+          const size = fs.statSync(filePath).size;
+          if (size >= PARTIAL_MIN_BYTES) {
+            console.log(`    [ffmpeg] 保留部分輸出（${(size / 1024 / 1024).toFixed(1)} MB），跳過剩餘重試`);
+            resolve();
+            return;
+          }
+        }
         tryNext(idx + 1);
       });
     };
@@ -696,6 +714,8 @@ async function downloadVideo(videoUrl, articleTitle, index, cookies = []) {
             && canonicalManifest !== normalizedVideoUrl
           ) {
             // 先使用 signed URL 走 Node 片段下載，僅在明確 403 時才改用 canonical。
+            // ffmpeg 已連續發出多次請求，先稍等片刻避免 CDN 短時限流誤判為 403。
+            await delay(3000);
             try {
               console.log(`    [HLS fallback] 先嘗試 Node 片段下載（signed）：${normalizedVideoUrl}`);
               outputPath = await downloadHlsViaNode(normalizedVideoUrl, filePath, requestHeaders, cookies, alternateManifestCandidates);
