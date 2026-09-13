@@ -153,7 +153,7 @@ function shouldRetryWithFreshUrl(errorMessage) {
       return {
         index: j,
         fileTitle,
-        promise: downloadVideo(videoSource, fileTitle, i + 1, cookies),
+        promise: downloadVideo(videoSource, fileTitle, i + 1, cookies, page),
       };
     });
 
@@ -170,7 +170,7 @@ function shouldRetryWithFreshUrl(errorMessage) {
           const freshVideoUrls = await getVideoUrlsFromArticle(page, url);
           const freshSource = freshVideoUrls[task.index];
           if (freshSource) {
-            result = await downloadVideo(freshSource, task.fileTitle, i + 1, cookies);
+            result = await downloadVideo(freshSource, task.fileTitle, i + 1, cookies, page);
           } else {
             console.log(`    [重試] 無法對應到新影片來源，略過重試`);
           }

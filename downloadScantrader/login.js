@@ -19,19 +19,34 @@ async function login(email, password, headless = false) {
 
   const browser = await chromium.launch({ headless, slowMo: 150 });
 
-  // 嘗試還原已儲存的 session
   let context;
-  if (await fs.pathExists(SESSION_FILE)) {
+  const restoreSession = async () => {
+    if (!(await fs.pathExists(SESSION_FILE))) return null;
     console.log('[登入] 發現已儲存的 session，嘗試還原...');
-    context = await browser.newContext({ storageState: SESSION_FILE });
-  } else {
-    context = await browser.newContext();
-  }
+    try {
+      context = await browser.newContext({ storageState: SESSION_FILE });
+      return context;
+    } catch (err) {
+      console.log(`[登入] session 還原失敗，將忽略舊 session：${err.message || err}`);
+      return null;
+    }
+  };
 
+  context = (await restoreSession()) || (await browser.newContext());
   const page = await context.newPage();
 
   // ── 前往首頁，確認登入狀態 ────────────────────────────────────────────────
-  await page.goto('https://scantrader.com', { waitUntil: 'domcontentloaded' });
+  try {
+    await page.goto('https://scantrader.com', { waitUntil: 'domcontentloaded', timeout: 20000 });
+  } catch (err) {
+    console.log(`[登入] 首頁載入失敗，重試新 Session：${err.message || err}`);
+    await context.close().catch(() => {});
+    context = await browser.newContext();
+    const freshPage = await context.newPage();
+    await freshPage.goto('https://scantrader.com', { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+    page.close().catch(() => {});
+    return login(email, password, headless);
+  }
   await page.waitForTimeout(2000);
 
   if (await isLoggedIn(page)) {

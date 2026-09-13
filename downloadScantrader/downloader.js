@@ -98,10 +98,40 @@ function buildRequestHeaders(requestHeaders = {}, cookies = [], url = '') {
     headers.Origin = 'https://scantrader.com';
   }
   if (!Object.keys(headers).some((key) => key.toLowerCase() === 'user-agent')) {
-    headers['User-Agent'] = 'Mozilla/5.0';
+    headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+  }
+  if (!Object.keys(headers).some((key) => key.toLowerCase() === 'accept')) {
+    headers.Accept = '*/*';
   }
 
   return headers;
+}
+
+async function downloadWithBrowserFallback(page, url, filePath, headers = {}) {
+  if (!page || !page.request) return null;
+
+  try {
+    const response = await page.request.get(url, {
+      headers,
+      maxRedirects: 10,
+      timeout: 120000,
+    });
+
+    if (!response.ok()) {
+      throw new Error(`browser request failed with ${response.status()}`);
+    }
+
+    const buffer = await response.body();
+    if (!Buffer.isBuffer(buffer) && typeof buffer !== 'string') {
+      throw new Error('browser request returned non-buffer payload');
+    }
+
+    await fs.writeFile(filePath, Buffer.from(buffer));
+    return filePath;
+  } catch (err) {
+    console.log(`    [下載 fallback] browser fetch 失敗：${String(err.message || err)}`);
+    return null;
+  }
 }
 
 function headersToString(headers = {}) {
@@ -212,7 +242,7 @@ async function getJwProgressiveMp4Candidates(url, headers) {
   return deduped;
 }
 
-async function downloadJwProgressiveFallback(url, filePath, requestHeaders = {}, cookies = [], preferredCandidates = []) {
+async function downloadJwProgressiveFallback(page, url, filePath, requestHeaders = {}, cookies = [], preferredCandidates = []) {
   const headers = buildRequestHeaders(requestHeaders, cookies, url);
   const apiCandidates = await getJwProgressiveMp4Candidates(url, headers);
   const candidates = [];
@@ -240,8 +270,16 @@ async function downloadJwProgressiveFallback(url, filePath, requestHeaders = {},
     try {
       console.log(`    [HLS fallback] 改抓 MP4 候選 #${i + 1}: ${candidate}`);
       await fs.remove(filePath).catch(() => {});
-      await downloadMp4(candidate, filePath, headers, cookies);
-      return filePath;
+      try {
+        await downloadMp4(candidate, filePath, headers, cookies);
+        return filePath;
+      } catch (err) {
+        if (err && err.message && /403/i.test(err.message)) {
+          const viaBrowser = await downloadWithBrowserFallback(page, candidate, filePath, headers);
+          if (viaBrowser) return viaBrowser;
+        }
+        throw err;
+      }
     } catch (err) {
       lastError = err;
       console.log(`    [HLS fallback] MP4 候選失敗：${err.message}`);
@@ -441,7 +479,10 @@ function remuxPlaylistToMp4(localPlaylistPath, outPath) {
         reject(new Error(`本地封裝失敗：${String(lastErr).slice(-300)}`));
         return;
       }
-      execFile(ffmpegPath, attempts[idx], { timeout: 1800000 }, (err, _so, se = '') => {
+      // maxBuffer 需夠大：JWPlayer HLS 串流常見大量非致命的「Invalid timestamps」
+      // 警告灌爆 stderr，若超過 Node 預設 1MB 上限，execFile 會誤判並強制砍掉
+      // ffmpeg 進程（看起來像下載中斷，實際上下載本身是正常的）。
+      execFile(ffmpegPath, attempts[idx], { timeout: 1800000, maxBuffer: 200 * 1024 * 1024 }, (err, _so, se = '') => {
         if (!err) {
           resolve();
           return;
@@ -454,7 +495,7 @@ function remuxPlaylistToMp4(localPlaylistPath, outPath) {
   });
 }
 
-async function downloadHlsViaNode(url, filePath, requestHeaders = {}, cookies = [], extraManifestCandidates = []) {
+async function downloadHlsViaNode(page, url, filePath, requestHeaders = {}, cookies = [], extraManifestCandidates = []) {
   const headers = buildRequestHeaders(requestHeaders, cookies, url);
   const manifestCandidates = await buildManifestCandidates(url, headers, extraManifestCandidates);
   let lastError = null;
@@ -470,33 +511,40 @@ async function downloadHlsViaNode(url, filePath, requestHeaders = {}, cookies = 
     await fs.remove(tempDir).catch(() => {});
     try {
       const masterHeaders = deriveHeadersForResource(headers, 'https://scantrader.com/');
-      const masterText = await fetchText(candidate, masterHeaders);
-
-      let mediaPlaylistUrl = candidate;
-      let mediaText = masterText;
-
-      if (masterText.includes('#EXT-X-STREAM-INF')) {
-        const variants = parseMasterPlaylist(masterText, mediaPlaylistUrl);
-        if (!variants.length) throw new Error('主清單無可用變體');
-        variants.sort((a, b) => b.bandwidth - a.bandwidth);
-        mediaPlaylistUrl = variants[0].url;
-        const mediaHeaders = deriveHeadersForResource(headers, candidate);
-        mediaText = await fetchText(mediaPlaylistUrl, mediaHeaders);
-      }
-
-      const segments = parseMediaPlaylist(mediaText, mediaPlaylistUrl);
-      if (!segments.length) throw new Error('媒體清單無片段');
-
-      const { localPlaylistPath, segmentFiles } = await materializeWithSegmentRetry(mediaText, mediaPlaylistUrl, tempDir, headers);
       try {
-        await remuxPlaylistToMp4(localPlaylistPath, filePath);
-        return filePath;
-      } catch (remuxErr) {
-        // 若 mp4 封裝失敗，退而求其次保留完整 TS，避免整次下載失敗
-        const tsPath = await uniqueFilePath(path.dirname(filePath), path.parse(filePath).name, 'ts');
-        console.log(`    [HLS fallback] MP4 封裝失敗，改輸出 TS：${path.basename(tsPath)}`);
-        await concatSegmentFilesToTs(segmentFiles, tsPath);
-        return tsPath;
+        const masterText = await fetchText(candidate, masterHeaders);
+
+        let mediaPlaylistUrl = candidate;
+        let mediaText = masterText;
+
+        if (masterText.includes('#EXT-X-STREAM-INF')) {
+          const variants = parseMasterPlaylist(masterText, mediaPlaylistUrl);
+          if (!variants.length) throw new Error('主清單無可用變體');
+          variants.sort((a, b) => b.bandwidth - a.bandwidth);
+          mediaPlaylistUrl = variants[0].url;
+          const mediaHeaders = deriveHeadersForResource(headers, candidate);
+          mediaText = await fetchText(mediaPlaylistUrl, mediaHeaders);
+        }
+
+        const segments = parseMediaPlaylist(mediaText, mediaPlaylistUrl);
+        if (!segments.length) throw new Error('媒體清單無片段');
+
+        const { localPlaylistPath, segmentFiles } = await materializeWithSegmentRetry(mediaText, mediaPlaylistUrl, tempDir, headers);
+        try {
+          await remuxPlaylistToMp4(localPlaylistPath, filePath);
+          return filePath;
+        } catch (remuxErr) {
+          const tsPath = await uniqueFilePath(path.dirname(filePath), path.parse(filePath).name, 'ts');
+          console.log(`    [HLS fallback] MP4 封裝失敗，改輸出 TS：${path.basename(tsPath)}`);
+          await concatSegmentFilesToTs(segmentFiles, tsPath);
+          return tsPath;
+        }
+      } catch (fetchErr) {
+        if (isHttp403Error(fetchErr) && page && page.request) {
+          const viaBrowser = await downloadWithBrowserFallback(page, candidate, filePath, masterHeaders);
+          if (viaBrowser) return viaBrowser;
+        }
+        throw fetchErr;
       }
     } catch (err) {
       lastError = err;
@@ -593,23 +641,37 @@ function downloadHls(url, filePath, requestHeaders = {}, cookies = []) {
 
     const headerStr = headersToString(buildRequestHeaders(requestHeaders, cookies, normalizedUrl));
 
+    // 網路「無回應」逾時（微秒）：偵測真正的連線卡死，而非長片下載耗時較久。
+    // 可用 FFMPEG_RW_TIMEOUT_MS 環境變數覆寫（毫秒）。
+    const rwTimeoutMs = Number(process.env.FFMPEG_RW_TIMEOUT_MS) || 30000;
+    const rwTimeoutArgs = ['-rw_timeout', String(rwTimeoutMs * 1000)];
+
+    // 整體下載逾時（毫秒）：長片（1~2 小時節目）以正常位元率下載可能耗時遠超過 10 分鐘，
+    // 若逾時值過短，ffmpeg 會在尚未寫出完整檔案（含 moov atom）前被強制中止，
+    // 造成「partial 輸出已損壞」的假性失敗，並因反覆重試觸發 CDN 403。
+    // 可用 FFMPEG_TIMEOUT_MS 環境變數覆寫。
+    const execTimeoutMs = Number(process.env.FFMPEG_TIMEOUT_MS) || 1800000; // 預設 30 分鐘
+
     // 嘗試順序：針對 JWPlayer HLS 時間戳記問題（+igndts 忽略無效 DTS）
     const attempts = [
       // 1. 忽略無效 DTS + 修正時間戳記 + faststart
       ['-y', '-fflags', '+discardcorrupt+genpts+igndts',
         '-protocol_whitelist', 'file,http,https,tcp,tls,crypto',
+        ...rwTimeoutArgs,
         ...(headerStr ? ['-headers', headerStr] : []),
         '-i', normalizedUrl, '-c', 'copy', '-avoid_negative_ts', 'make_non_negative',
         '-max_interleave_delta', '0', '-movflags', '+faststart', filePath],
       // 2. 同上但不加 faststart（避免二次 seek 失敗）
       ['-y', '-fflags', '+discardcorrupt+genpts+igndts',
         '-protocol_whitelist', 'file,http,https,tcp,tls,crypto',
+        ...rwTimeoutArgs,
         ...(headerStr ? ['-headers', headerStr] : []),
         '-i', normalizedUrl, '-c', 'copy', '-avoid_negative_ts', 'make_non_negative',
         '-max_interleave_delta', '0', filePath],
       // 3. 重新編碼音視訊（最後手段，確保相容性）
       ['-y', '-fflags', '+discardcorrupt+igndts',
         '-protocol_whitelist', 'file,http,https,tcp,tls,crypto',
+        ...rwTimeoutArgs,
         ...(headerStr ? ['-headers', headerStr] : []),
         '-i', normalizedUrl, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k',
         '-max_interleave_delta', '0', filePath],
@@ -627,17 +689,41 @@ function downloadHls(url, filePath, requestHeaders = {}, cookies = []) {
       }
       const args = attempts[idx];
       console.log(`    [ffmpeg] 嘗試 #${idx + 1}...`);
-      execFile(ffmpegPath, args, { timeout: 600000 }, (err, _so, se) => {
-        if (!err) { resolve(); return; }
+      execFile(ffmpegPath, args, { timeout: execTimeoutMs, maxBuffer: 200 * 1024 * 1024 }, async (err, _so, se) => {
+        if (err && err.killed) {
+          console.log(`    [ffmpeg] #${idx + 1} 逾時被中止（超過 ${(execTimeoutMs / 60000).toFixed(0)} 分鐘），可調整 FFMPEG_TIMEOUT_MS 環境變數`);
+        }
+        if (!err) {
+          try {
+            const duration = await probeDurationSeconds(filePath, ffmpegPath);
+            if (Number.isFinite(duration) && duration > 0) {
+              resolve();
+              return;
+            }
+          } catch {
+            // ignore and continue to next fallback path
+          }
+          console.log(`    [ffmpeg] 產出檔案無法被解析，嘗試後續回退`);
+          tryNext(idx + 1);
+          return;
+        }
         const hint = se.slice(-200).replace(/\s+/g, ' ').trim();
         console.log(`    [ffmpeg] #${idx + 1} 失敗：${hint}`);
 
         if (!isAuthFailure(hint) && fs.existsSync(filePath)) {
           const size = fs.statSync(filePath).size;
           if (size >= PARTIAL_MIN_BYTES) {
-            console.log(`    [ffmpeg] 保留部分輸出（${(size / 1024 / 1024).toFixed(1)} MB），跳過剩餘重試`);
-            resolve();
-            return;
+            try {
+              const duration = await probeDurationSeconds(filePath, ffmpegPath);
+              if (Number.isFinite(duration) && duration > 0) {
+                console.log(`    [ffmpeg] 使用有效 partial 輸出（${(size / 1024 / 1024).toFixed(1)} MB，${duration.toFixed(1)}s）`);
+                resolve();
+                return;
+              }
+            } catch {
+              // fall through to retry fallback when partial output is invalid
+            }
+            console.log(`    [ffmpeg] partial 輸出已損壞或不可解析（${(size / 1024 / 1024).toFixed(1)} MB），不接受為成功結果`);
           }
         }
         tryNext(idx + 1);
@@ -649,7 +735,12 @@ function downloadHls(url, filePath, requestHeaders = {}, cookies = []) {
 
 function probeDurationSeconds(filePath, ffmpegPath) {
   return new Promise((resolve) => {
-    execFile(ffmpegPath, ['-i', filePath], { timeout: 30000 }, (_err, _so, se = '') => {
+    // 注意：僅用 `-i` 不指定輸出，讓 ffmpeg 在開檔後立即印出
+    // 「Input #0 ... Duration: ...」再因缺少輸出而失敗結束（可忽略此錯誤）。
+    // 這樣不需完整解碼整支影片，速度快且不受 `-v error`（會壓制 Duration
+    // 這行 INFO 等級訊息，導致永遠偵測不到時長）或大量警告訊息灌爆
+    // stderr 緩衝區影響。
+    execFile(ffmpegPath, ['-i', filePath], { timeout: 30000, maxBuffer: 20 * 1024 * 1024 }, (_err, _so, se = '') => {
       const text = String(se || '');
       const m = text.match(/Duration:\s*(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)/i);
       if (!m) {
@@ -671,7 +762,7 @@ function probeDurationSeconds(filePath, ffmpegPath) {
  * @param {number} index         文章序號（四位數前綴用）
  * @param {Array}  cookies       Playwright context.cookies()
  */
-async function downloadVideo(videoUrl, articleTitle, index, cookies = []) {
+async function downloadVideo(videoUrl, articleTitle, index, cookies = [], page = null) {
   await fs.ensureDir(OUTPUT_DIR);
 
   const video = typeof videoUrl === 'string' ? { url: videoUrl, headers: {} } : (videoUrl || {});
@@ -690,20 +781,18 @@ async function downloadVideo(videoUrl, articleTitle, index, cookies = []) {
     (e) => normalizedVideoUrl.split('?')[0].toLowerCase().endsWith(`.${e}`)
   ) || 'mp4');
 
-  // 前綴 + 安全標題（截斷到 80 字元，後綴已在 articleTitle 裡）
   const prefix = String(index).padStart(4, '0');
   const safeName = safeFilename(articleTitle).slice(0, 100);
   const basename = `${prefix}_${safeName}`;
-
-  // 確保唯一檔名，永不略過
   const filePath = await uniqueFilePath(OUTPUT_DIR, basename, ext);
-  let outputPath = filePath;
+  const tempPath = await uniqueFilePath(OUTPUT_DIR, `${basename}_tmp`, ext);
+  let outputPath = tempPath;
   console.log(`  [下載] ${path.basename(filePath)}`);
 
   try {
     if (isHls) {
       try {
-        await downloadHls(normalizedVideoUrl, filePath, requestHeaders, cookies);
+        await downloadHls(normalizedVideoUrl, tempPath, requestHeaders, cookies);
       } catch (hlsErr) {
         try {
           const canonicalManifest = toCanonicalManifestUrl(normalizedVideoUrl);
@@ -713,36 +802,33 @@ async function downloadVideo(videoUrl, articleTitle, index, cookies = []) {
             && canonicalManifest
             && canonicalManifest !== normalizedVideoUrl
           ) {
-            // 先使用 signed URL 走 Node 片段下載，僅在明確 403 時才改用 canonical。
-            // ffmpeg 已連續發出多次請求，先稍等片刻避免 CDN 短時限流誤判為 403。
             await delay(3000);
             try {
               console.log(`    [HLS fallback] 先嘗試 Node 片段下載（signed）：${normalizedVideoUrl}`);
-              outputPath = await downloadHlsViaNode(normalizedVideoUrl, filePath, requestHeaders, cookies, alternateManifestCandidates);
+              outputPath = await downloadHlsViaNode(page, normalizedVideoUrl, tempPath, requestHeaders, cookies, alternateManifestCandidates);
             } catch (signedNodeErr) {
               if (!isHttp403Error(signedNodeErr)) throw signedNodeErr;
 
               console.log(`    [HLS retry] signed URL 403，改用 canonical manifest：${canonicalManifest}`);
               try {
-                await downloadHls(canonicalManifest, filePath, requestHeaders, cookies);
+                await downloadHls(canonicalManifest, tempPath, requestHeaders, cookies);
               } catch (canonicalErr) {
                 console.log(`    [HLS retry] canonical ffmpeg 失敗：${canonicalErr.message}`);
                 console.log(`    [HLS fallback] 啟用 Node 片段下載（canonical）：${canonicalManifest}`);
-                outputPath = await downloadHlsViaNode(canonicalManifest, filePath, requestHeaders, cookies, alternateManifestCandidates);
+                outputPath = await downloadHlsViaNode(page, canonicalManifest, tempPath, requestHeaders, cookies, alternateManifestCandidates);
               }
             }
           } else {
             console.log(`    [HLS fallback] 啟用 Node 片段下載：${hlsErr.message}`);
-            outputPath = await downloadHlsViaNode(normalizedVideoUrl, filePath, requestHeaders, cookies, alternateManifestCandidates);
+            outputPath = await downloadHlsViaNode(page, normalizedVideoUrl, tempPath, requestHeaders, cookies, alternateManifestCandidates);
           }
         } catch (fallbackErr) {
-          // 若 HLS（含 canonical/signed/node）都失敗，最後改抓 JWPlayer 提供的 progressive mp4。
           console.log(`    [HLS fallback] HLS 路徑失敗，嘗試 MP4 來源：${fallbackErr.message}`);
-          outputPath = await downloadJwProgressiveFallback(normalizedVideoUrl, filePath, requestHeaders, cookies, alternateMp4Candidates);
+          outputPath = await downloadJwProgressiveFallback(page, normalizedVideoUrl, tempPath, requestHeaders, cookies, alternateMp4Candidates);
         }
       }
     } else {
-      await downloadMp4(normalizedVideoUrl, filePath, requestHeaders, cookies);
+      await downloadMp4(normalizedVideoUrl, tempPath, requestHeaders, cookies);
     }
 
     const stat = await fs.stat(outputPath);
@@ -752,18 +838,28 @@ async function downloadVideo(videoUrl, articleTitle, index, cookies = []) {
     }
 
     const ffmpegPath = findFfmpeg();
-    let durationText = '';
+    let durationSec = null;
     if (ffmpegPath) {
-      const sec = await probeDurationSeconds(outputPath, ffmpegPath);
-      if (typeof sec === 'number' && Number.isFinite(sec)) {
-        const mins = Math.floor(sec / 60);
-        const secs = Math.round(sec % 60).toString().padStart(2, '0');
-        durationText = `, ${mins}:${secs}`;
+      durationSec = await probeDurationSeconds(outputPath, ffmpegPath);
+      if (!Number.isFinite(durationSec) || durationSec <= 0) {
+        await fs.remove(outputPath).catch(() => {});
+        throw new Error(`影片檔案無法被 ffmpeg 解析，可能是下載中斷或檔案損壞：${path.basename(outputPath)}`);
       }
     }
 
-    console.log(`  [完成] ${path.basename(outputPath)} (${(stat.size / 1024 / 1024).toFixed(1)} MB${durationText})`);
-    return { skipped: false, filePath: outputPath };
+    await fs.move(outputPath, filePath, { overwrite: true });
+    outputPath = filePath;
+
+    let durationText = '';
+    if (typeof durationSec === 'number' && Number.isFinite(durationSec)) {
+      const mins = Math.floor(durationSec / 60);
+      const secs = Math.round(durationSec % 60).toString().padStart(2, '0');
+      durationText = `, ${mins}:${secs}`;
+    }
+
+    const finalStat = await fs.stat(outputPath);
+    console.log(`  [完成] ${path.basename(outputPath)} (${(finalStat.size / 1024 / 1024).toFixed(1)} MB${durationText})`);
+    return { skipped: false, filePath: outputPath, autoPostprocess: true };
   } catch (err) {
     console.error(`  [錯誤] ${err.message}`);
     await fs.remove(outputPath).catch(() => {});

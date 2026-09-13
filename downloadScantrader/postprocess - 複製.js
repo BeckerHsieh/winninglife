@@ -23,19 +23,21 @@ const WHISPER_MODEL = process.env.WHISPER_MODEL || 'small';
 const WHISPER_LANGUAGE = process.env.WHISPER_LANGUAGE || 'zh';
 
 function withTimeout(promiseFactory, timeoutMs, label) {
+  let timeoutId;
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      reject(new Error(`${label || 'operation'} timeout after ${timeoutMs}ms`));
+      reject(new Error(`${label} timeout after ${timeoutMs}ms`));
     }, timeoutMs);
+    timeoutId = timer;
 
     Promise.resolve()
       .then(() => promiseFactory())
       .then((value) => {
-        clearTimeout(timer);
+        clearTimeout(timeoutId);
         resolve(value);
       })
       .catch((error) => {
-        clearTimeout(timer);
+        clearTimeout(timeoutId);
         reject(error);
       });
   });
@@ -43,19 +45,23 @@ function withTimeout(promiseFactory, timeoutMs, label) {
 
 function sampleFramesForOcr(images) {
   if (!Array.isArray(images) || images.length === 0) return [];
-  const maxCount = Math.max(1, Number(OCR_MAX_IMAGES || 60));
+  const maxCount = Math.max(1, Number(process.env.OCR_MAX_IMAGES || 60));
   if (images.length <= maxCount) return images;
 
   const sampled = [];
   const step = images.length / maxCount;
   for (let i = 0; i < maxCount; i++) {
     const idx = Math.min(images.length - 1, Math.floor(i * step));
-    if (!sampled.includes(images[idx])) {
-      sampled.push(images[idx]);
+    if (!sampled.some((item) => item.index === idx)) {
+      sampled.push({ index: idx, value: images[idx] });
     }
   }
 
-  return sampled;
+  if (sampled.length === maxCount) {
+    return sampled.map((item) => item.value);
+  }
+
+  return images.filter((_item, idx) => idx % Math.ceil(images.length / maxCount) === 0).slice(0, maxCount);
 }
 
 function findFfmpeg() {
@@ -239,29 +245,6 @@ function probeVideoDurationSeconds(filePath, ffmpegPath) {
       resolve(h * 3600 + min * 60 + sec);
     });
   });
-}
-
-async function validateVideoFile(videoPath) {
-  const ffmpegPath = findFfmpeg();
-  if (!ffmpegPath) {
-    return { ok: true, reason: 'ffmpeg unavailable' };
-  }
-
-  try {
-    const duration = await probeVideoDurationSeconds(videoPath, ffmpegPath);
-    if (!Number.isFinite(duration) || duration <= 0) {
-      return {
-        ok: false,
-        reason: `影片檔案無效或下載未完成：${path.basename(videoPath)}（ffmpeg 無法解析有效 duration）`,
-      };
-    }
-    return { ok: true, duration };
-  } catch (err) {
-    return {
-      ok: false,
-      reason: `影片檔案無效或下載未完成：${path.basename(videoPath)}（${String(err && err.message ? err.message : err)})`,
-    };
-  }
 }
 
 function parseSrtToTimeline(srtText) {
@@ -548,77 +531,88 @@ async function listJpgFiles(dir) {
 }
 
 async function waitForVideoReady(page) {
-  await withTimeout(async () => {
-    await page.locator('video').evaluate(async (video) => {
-      if (video.readyState >= 1 && Number.isFinite(video.duration) && video.duration > 0) return;
+  await page.locator('video').evaluate(async (video) => {
+    if (video.readyState >= 1 && Number.isFinite(video.duration) && video.duration > 0) return;
 
-      await new Promise((resolve, reject) => {
-        const onReady = () => {
-          cleanup();
-          resolve();
-        };
-        const onError = () => {
-          cleanup();
-          reject(new Error('video load failed'));
-        };
-        const cleanup = () => {
-          video.removeEventListener('loadedmetadata', onReady);
-          video.removeEventListener('error', onError);
-        };
+    await new Promise((resolve, reject) => {
+      const onReady = () => {
+        cleanup();
+        resolve();
+      };
+      const onError = () => {
+        cleanup();
+        reject(new Error('video load failed'));
+      };
+      const cleanup = () => {
+        video.removeEventListener('loadedmetadata', onReady);
+        video.removeEventListener('error', onError);
+      };
 
-        video.addEventListener('loadedmetadata', onReady, { once: true });
-        video.addEventListener('error', onError, { once: true });
-      });
+      video.addEventListener('loadedmetadata', onReady, { once: true });
+      video.addEventListener('error', onError, { once: true });
     });
-  }, 30000, 'video metadata ready');
+  });
 }
 
 async function seekVideoTo(page, timeSeconds) {
-  await withTimeout(async () => {
-    await page.locator('video').evaluate(async (video, time) => {
-      const targetTime = Math.max(0, Number(time) || 0);
-      video.pause();
+  await page.locator('video').evaluate(async (video, time) => {
+    const targetTime = Math.max(0, Number(time) || 0);
+    video.pause();
 
-      if (Math.abs((Number(video.currentTime) || 0) - targetTime) < 0.05) {
-        await new Promise((resolve) => requestAnimationFrame(() => resolve()));
-        return;
-      }
-
-      await new Promise((resolve, reject) => {
-        const onSeeked = () => {
-          cleanup();
-          resolve();
-        };
-        const onError = () => {
-          cleanup();
-          reject(new Error('seek failed'));
-        };
-        const cleanup = () => {
-          video.removeEventListener('seeked', onSeeked);
-          video.removeEventListener('error', onError);
-        };
-
-        video.addEventListener('seeked', onSeeked, { once: true });
-        video.addEventListener('error', onError, { once: true });
-        video.currentTime = targetTime;
-      });
-
+    if (Math.abs((Number(video.currentTime) || 0) - targetTime) < 0.05) {
       await new Promise((resolve) => requestAnimationFrame(() => resolve()));
-    }, timeSeconds);
-  }, 30000, `seek video to ${timeSeconds}s`);
+      return;
+    }
+
+    await new Promise((resolve, reject) => {
+      const onSeeked = () => {
+        cleanup();
+        resolve();
+      };
+      const onError = () => {
+        cleanup();
+        reject(new Error('seek failed'));
+      };
+      const cleanup = () => {
+        video.removeEventListener('seeked', onSeeked);
+        video.removeEventListener('error', onError);
+      };
+
+      video.addEventListener('seeked', onSeeked, { once: true });
+      video.addEventListener('error', onError, { once: true });
+      video.currentTime = targetTime;
+    });
+
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  }, timeSeconds);
 }
 
 async function runOcrLines(imagePaths, lang = 'chi_tra+eng') {
-  if (imagePaths.length === 0) return [];
+  const limitedPaths = sampleFramesForOcr(imagePaths);
+  if (limitedPaths.length === 0) return [];
+
+  if (limitedPaths.length !== imagePaths.length) {
+    console.log(`    [OCR] 截圖超過上限，僅處理 ${limitedPaths.length}/${imagePaths.length} 張，避免長時間 idle`);
+  }
+
   const { createWorker } = await ensureTesseract();
   const worker = await createWorker(lang);
   const lines = [];
 
   try {
-    for (let i = 0; i < imagePaths.length; i++) {
-      const imagePath = imagePaths[i];
-      const { data } = await worker.recognize(imagePath);
-      lines.push(normalizeOcrText(data && data.text));
+    for (let i = 0; i < limitedPaths.length; i++) {
+      const imagePath = limitedPaths[i];
+      try {
+        const { data } = await withTimeout(
+          () => worker.recognize(imagePath),
+          OCR_TIMEOUT_MS,
+          `OCR ${path.basename(imagePath)}`
+        );
+        lines.push(normalizeOcrText(data && data.text));
+      } catch (err) {
+        console.log(`    [OCR] ${path.basename(imagePath)} 失敗或超時：${String(err && err.message ? err.message : err).slice(-200)}`);
+        lines.push('');
+      }
     }
   } finally {
     await worker.terminate();
@@ -884,58 +878,42 @@ function extractStocksFromText(text) {
 }
 
 async function extractSlideFrames(videoPath, videoWorkDir, outputDir) {
-  const validation = await validateVideoFile(videoPath);
-  if (!validation.ok) {
-    return { ok: false, reason: validation.reason };
-  }
-
   const tempSlideDir = path.join(videoWorkDir, 'slides_tmp');
   await fs.emptyDir(tempSlideDir);
 
-  const finalizeFfmpegSlides = async (rawSlides) => {
-    const globalSlideDir = path.join(outputDir, 'slides');
-    await fs.ensureDir(globalSlideDir);
-    const dateStamp = getDateStamp();
-    let seq = await getTodaySlideStartIndex(globalSlideDir, dateStamp);
-
-    const slides = [];
-    for (const rawFile of rawSlides) {
-      const finalName = `${dateStamp}_${String(seq).padStart(5, '0')}.jpg`;
-      const fromPath = path.join(tempSlideDir, rawFile);
-      const toPath = path.join(globalSlideDir, finalName);
-      await fs.move(fromPath, toPath, { overwrite: false });
-      slides.push(finalName);
-      seq++;
-    }
-
-    await fs.remove(tempSlideDir).catch(() => {});
-    return { ok: true, slideDir: globalSlideDir, slides };
-  };
-
-  // 改走 ffmpeg fallback：穩定、快速、不依賴 Playwright browser seek/screenshot
-  try {
-    console.log('    [簡報擷取] 使用 ffmpeg fallback 產生 JPG');
-    const rawSlides = await extractSlidesViaFfmpeg(videoPath, tempSlideDir);
-    if (rawSlides.length === 0) {
-      throw new Error('ffmpeg fallback 未產生任何 JPG');
-    }
-    return await finalizeFfmpegSlides(rawSlides);
-  } catch (ffmpegErr) {
-    console.log(`    [簡報擷取] ffmpeg fallback 失敗：${String(ffmpegErr && ffmpegErr.message ? ffmpegErr.message : ffmpegErr)}`);
-  }
-
-  // Browser path kept as last resort only to avoid breaking compatibility.
   let browserVideoPath = videoPath;
-  let previewHtmlPath = null;
-  let browser = null;
-  let context = null;
-  let page = null;
-
   try {
     browserVideoPath = await ensureBrowserPreviewVideo(videoPath, videoWorkDir);
-    previewHtmlPath = path.join(videoWorkDir, 'slides_preview.html');
-    const videoFileUrl = pathToFileURL(browserVideoPath).href;
-    const previewHtml = `<!doctype html>
+  } catch (err) {
+    console.log(`    [簡報擷取] browser 預覽轉檔失敗，改用 ffmpeg 備援：${String(err && err.message ? err.message : err)}`);
+    try {
+      const rawSlides = await extractSlidesViaFfmpeg(videoPath, tempSlideDir);
+
+      const globalSlideDir = path.join(outputDir, 'slides');
+      await fs.ensureDir(globalSlideDir);
+      const dateStamp = getDateStamp();
+      let seq = await getTodaySlideStartIndex(globalSlideDir, dateStamp);
+
+      const slides = [];
+      for (const rawFile of rawSlides) {
+        const finalName = `${dateStamp}_${String(seq).padStart(5, '0')}.jpg`;
+        const fromPath = path.join(tempSlideDir, rawFile);
+        const toPath = path.join(globalSlideDir, finalName);
+        await fs.move(fromPath, toPath, { overwrite: false });
+        slides.push(finalName);
+        seq++;
+      }
+
+      await fs.remove(tempSlideDir).catch(() => {});
+      return { ok: true, slideDir: globalSlideDir, slides };
+    } catch (fallbackErr) {
+      return { ok: false, reason: String(fallbackErr && fallbackErr.message ? fallbackErr.message : fallbackErr) };
+    }
+  }
+
+  const previewHtmlPath = path.join(videoWorkDir, 'slides_preview.html');
+  const videoFileUrl = pathToFileURL(browserVideoPath).href;
+  const previewHtml = `<!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
@@ -967,28 +945,24 @@ async function extractSlideFrames(videoPath, videoWorkDir, outputDir) {
   <video id="video" src="${videoFileUrl}" preload="auto" muted playsinline></video>
 </body>
 </html>`;
-    await fs.writeFile(previewHtmlPath, previewHtml, 'utf8');
+  await fs.writeFile(previewHtmlPath, previewHtml, 'utf8');
 
-    browser = await withTimeout(
-      () => chromium.launch({
-        headless: true,
-        args: ['--allow-file-access-from-files', '--disable-dev-shm-usage', '--no-sandbox'],
-      }),
-      30000,
-      'Playwright browser launch'
-    );
+  let browser;
+  let context;
+  let page;
 
+  try {
+    browser = await chromium.launch({
+      headless: true,
+      args: ['--allow-file-access-from-files'],
+    });
     context = await browser.newContext({
       viewport: { width: 1600, height: 900 },
       deviceScaleFactor: 1,
     });
     page = await context.newPage();
 
-    await withTimeout(
-      () => page.goto(pathToFileURL(previewHtmlPath).href, { waitUntil: 'load', timeout: 30000 }),
-      30000,
-      'preview page load'
-    );
+    await page.goto(pathToFileURL(previewHtmlPath).href, { waitUntil: 'load', timeout: 30000 });
     await page.waitForSelector('video', { timeout: 30000 });
     await waitForVideoReady(page);
 
@@ -1025,14 +999,30 @@ async function extractSlideFrames(videoPath, videoWorkDir, outputDir) {
       console.log(`    [簡報擷取] browser ${formatTimestamp(time)}: ${rawSlides.length} 張`);
     }
 
-    return await finalizeFfmpegSlides(rawSlides);
+    const globalSlideDir = path.join(outputDir, 'slides');
+    await fs.ensureDir(globalSlideDir);
+    const dateStamp = getDateStamp();
+    let seq = await getTodaySlideStartIndex(globalSlideDir, dateStamp);
+
+    const slides = [];
+    for (const rawFile of rawSlides) {
+      const finalName = `${dateStamp}_${String(seq).padStart(5, '0')}.jpg`;
+      const fromPath = path.join(tempSlideDir, rawFile);
+      const toPath = path.join(globalSlideDir, finalName);
+      await fs.move(fromPath, toPath, { overwrite: false });
+      slides.push(finalName);
+      seq++;
+    }
+
+    await fs.remove(tempSlideDir).catch(() => {});
+    return { ok: true, slideDir: globalSlideDir, slides };
   } catch (err) {
     return { ok: false, reason: err.message || String(err) };
   } finally {
     if (page) await page.close().catch(() => {});
     if (context) await context.close().catch(() => {});
     if (browser) await browser.close().catch(() => {});
-    if (previewHtmlPath) await fs.remove(previewHtmlPath).catch(() => {});
+    await fs.remove(previewHtmlPath).catch(() => {});
     if (browserVideoPath && browserVideoPath !== videoPath) {
       await fs.remove(browserVideoPath).catch(() => {});
     }
@@ -1048,12 +1038,17 @@ async function processSlidesAndExtractStocks(videoPath, videoWorkDir, baseName) 
     return { ok: true, mentions: [], slideDir, slideCount: 0 };
   }
 
-  const absPaths = slides.map((f) => path.join(slideDir, f));
+  const selectedSlides = sampleFramesForOcr(slides);
+  if (selectedSlides.length !== slides.length) {
+    console.log(`    [簡報擷取] OCR 篩選前 ${slides.length} 張，實際處理 ${selectedSlides.length} 張`);
+  }
+
+  const absPaths = selectedSlides.map((f) => path.join(slideDir, f));
   const ocrTexts = await runOcrLines(absPaths, 'chi_tra+eng');
   const mentions = [];
 
-  for (let i = 0; i < slides.length; i++) {
-    const imageFile = slides[i];
+  for (let i = 0; i < selectedSlides.length; i++) {
+    const imageFile = selectedSlides[i];
     const text = ocrTexts[i] || '';
     const stocks = extractStocksFromText(text);
     if (stocks.length === 0) continue;
@@ -1210,22 +1205,17 @@ async function extractSlidesOnly(videoPath) {
   const videoWorkDir = path.join(outputDir, baseName);
   await fs.ensureDir(videoWorkDir);
 
-  try {
-    const result = await extractSlideFrames(absVideoPath, videoWorkDir, outputDir);
-    if (!result.ok) {
-      throw new Error(result.reason || '簡報擷取失敗');
-    }
-
-    return {
-      videoPath: absVideoPath,
-      slideDir: result.slideDir,
-      slideCount: (result.slides || []).length,
-      slides: result.slides || [],
-    };
-  } catch (err) {
-    const reason = String(err && err.message ? err.message : err);
-    throw new Error(`簡報擷取失敗：${reason}`);
+  const result = await extractSlideFrames(absVideoPath, videoWorkDir, outputDir);
+  if (!result.ok) {
+    throw new Error(result.reason || '簡報擷取失敗');
   }
+
+  return {
+    videoPath: absVideoPath,
+    slideDir: result.slideDir,
+    slideCount: (result.slides || []).length,
+    slides: result.slides || [],
+  };
 }
 
 module.exports = {
@@ -1234,4 +1224,6 @@ module.exports = {
   writeStockMarkdowns,
   summarizeSrtToMarkdown,
   extractSlidesOnly,
+  withTimeout,
+  sampleFramesForOcr,
 };

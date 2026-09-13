@@ -1,4 +1,10 @@
+@echo off
 set SLIDE_MAX_FRAMES=1200
+set OCR_MAX_IMAGES=30
+set OCR_TIMEOUT_MS=30000
 set SKIP_ASR=1
 set SKIP_STOCKS=1
+set SKIP_ASR_PREFLIGHT=1
+
+echo [batch] 啟用保守模式: SKIP_ASR=1 SKIP_STOCKS=1 SKIP_ASR_PREFLIGHT=1 OCR_MAX_IMAGES=30 OCR_TIMEOUT_MS=30000
 node ./downloadScantrader/index.js --article %*
