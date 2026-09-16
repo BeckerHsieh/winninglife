@@ -72,7 +72,7 @@ function findFfmpeg() {
 
 function runFfmpeg(ffmpegPath, args, timeout = 60 * 60 * 1000) {
   return new Promise((resolve, reject) => {
-    execFile(ffmpegPath, args, { timeout }, (err, stdout, stderr) => {
+    execFile(ffmpegPath, args, { timeout, maxBuffer: 1024 * 1024 * 20 }, (err, stdout, stderr) => {
       if (err) {
         const hint = String(stderr || stdout || err.message || '').slice(-1000);
         reject(new Error(`ffmpeg 執行失敗: ${hint}`));
@@ -705,11 +705,18 @@ async function extractSlidesViaFfmpeg(videoPath, tempSlideDir) {
     throw new Error('找不到 ffmpeg，無法使用備援簡報擷取');
   }
 
+  // ffmpeg 的 image2 muxer 會把輸出路徑當成 printf 樣式解析，
+  // 若目錄名稱（來自影片標題，例如含有「72%」）出現單一 % 會被誤判為
+  // 無效的格式化樣式，導致 "does not contain an image sequence pattern"
+  // 而讓整個轉檔失敗。將目錄部分的 % 轉成 %% 進行跳脫即可讓 ffmpeg
+  // 正確還原成原本的路徑。
+  const escapedTempDir = tempSlideDir.replace(/%/g, '%%');
+
   const interval = Math.max(1, SLIDE_FALLBACK_INTERVAL_SECONDS);
   const durationSec = await probeVideoDurationSeconds(videoPath, ffmpegPath);
 
   if (!durationSec || !Number.isFinite(durationSec) || durationSec <= 0) {
-    const outPattern = path.join(tempSlideDir, 'slide_raw_%05d.jpg');
+    const outPattern = path.join(escapedTempDir, 'slide_raw_%05d.jpg');
     await runFfmpeg(ffmpegPath, [
       '-y',
       '-fflags', '+genpts+igndts+discardcorrupt',
@@ -738,7 +745,7 @@ async function extractSlidesViaFfmpeg(videoPath, tempSlideDir) {
     const remainingBudget = SLIDE_MAX_FRAMES - written;
     const thisChunkSeconds = Math.min(chunkSeconds, Math.max(1, durationSec - startSec));
     const chunkFrameBudget = Math.max(1, Math.min(remainingBudget, Math.ceil(thisChunkSeconds / interval) + 2));
-    const outPattern = path.join(tempSlideDir, `slide_raw_${String(chunkIndex + 1).padStart(3, '0')}_%05d.jpg`);
+    const outPattern = path.join(escapedTempDir, `slide_raw_${String(chunkIndex + 1).padStart(3, '0')}_%05d.jpg`);
 
     try {
       await runFfmpeg(ffmpegPath, [
