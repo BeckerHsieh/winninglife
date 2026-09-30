@@ -22,6 +22,13 @@ const OCR_TIMEOUT_MS = Number(process.env.OCR_TIMEOUT_MS || 60000);
 const WHISPER_MODEL = process.env.WHISPER_MODEL || 'small';
 const WHISPER_LANGUAGE = process.env.WHISPER_LANGUAGE || 'zh';
 
+// 重點 slide 篩選（curate-key-slides.js）用參數
+const SLIDE_DEDUP_SSIM_THRESHOLD = Number(process.env.SLIDE_DEDUP_SSIM_THRESHOLD || 0.92);
+const SLIDE_DEDUP_SCALE_WIDTH = Number(process.env.SLIDE_DEDUP_SCALE_WIDTH || 320);
+const SLIDE_DEDUP_REPRESENTATIVE = process.env.SLIDE_DEDUP_REPRESENTATIVE === 'first' ? 'first' : 'last';
+const CURATE_OCR_MAX_IMAGES = Number(process.env.CURATE_OCR_MAX_IMAGES || 400);
+const CURATE_MIN_SCORE = Number(process.env.CURATE_MIN_SCORE || 3);
+
 function withTimeout(promiseFactory, timeoutMs, label) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -1235,10 +1242,230 @@ async function extractSlidesOnly(videoPath) {
   }
 }
 
+// ---- 重點 slide 篩選（給 curate-key-slides.js 使用）----
+
+async function computeFrameSimilarity(imagePathA, imagePathB, opts = {}) {
+  const scaleWidth = Math.max(16, Number(opts.scaleWidth || SLIDE_DEDUP_SCALE_WIDTH));
+  const ffmpegPath = findFfmpeg();
+  if (!ffmpegPath) return { ok: false, reason: '找不到 ffmpeg' };
+
+  try {
+    const { stderr } = await runFfmpeg(ffmpegPath, [
+      '-hide_banner',
+      '-i', imagePathA,
+      '-i', imagePathB,
+      '-lavfi', `[0:v]scale=${scaleWidth}:-1[a];[1:v]scale=${scaleWidth}:-1[b];[a][b]ssim`,
+      '-f', 'null', '-',
+    ], 60000);
+    const m = String(stderr || '').match(/All:\s*([\d.]+)/);
+    if (!m) return { ok: false, reason: 'ssim 輸出無法解析' };
+    return { ok: true, ssim: Number(m[1]) };
+  } catch (err) {
+    return { ok: false, reason: String(err && err.message ? err.message : err) };
+  }
+}
+
+async function computeNearDuplicateRuns(sortedImagePaths, opts = {}) {
+  const threshold = Number(opts.threshold ?? SLIDE_DEDUP_SSIM_THRESHOLD);
+  const representative = opts.representative === 'first' ? 'first' : SLIDE_DEDUP_REPRESENTATIVE;
+  const warnings = [];
+
+  if (!Array.isArray(sortedImagePaths) || sortedImagePaths.length === 0) {
+    return { runs: [], warnings };
+  }
+
+  const runs = [];
+  let currentRun = [sortedImagePaths[0]];
+
+  for (let i = 1; i < sortedImagePaths.length; i++) {
+    const prev = sortedImagePaths[i - 1];
+    const curr = sortedImagePaths[i];
+    const result = await computeFrameSimilarity(prev, curr, opts);
+
+    if (!result.ok) {
+      // fail-open：比對失敗時視為「不重複」，避免漏判掉可能獨特的畫面
+      warnings.push({ index: i, a: prev, b: curr, reason: result.reason });
+    }
+
+    const isDuplicate = result.ok && result.ssim >= threshold;
+    if (isDuplicate) {
+      currentRun.push(curr);
+    } else {
+      runs.push(currentRun);
+      currentRun = [curr];
+    }
+  }
+  runs.push(currentRun);
+
+  const namedRuns = runs.map((memberPaths) => ({
+    representativePath: representative === 'first' ? memberPaths[0] : memberPaths[memberPaths.length - 1],
+    memberPaths,
+  }));
+
+  return { runs: namedRuns, warnings };
+}
+
+async function runOcrLinesSafe(imagePaths, lang = 'chi_tra+eng', opts = {}) {
+  const texts = [];
+  const errors = [];
+  if (!Array.isArray(imagePaths) || imagePaths.length === 0) return { texts, errors };
+
+  const { createWorker } = await ensureTesseract();
+  const worker = await createWorker(lang);
+  const timeoutMs = Number(opts.timeoutMs || OCR_TIMEOUT_MS);
+
+  try {
+    for (let i = 0; i < imagePaths.length; i++) {
+      const imagePath = imagePaths[i];
+      try {
+        const { data } = await withTimeout(() => worker.recognize(imagePath), timeoutMs, `OCR ${path.basename(imagePath)}`);
+        texts.push(normalizeOcrText(data && data.text));
+      } catch (err) {
+        // OCR 單張失敗只記錄，不中斷整批
+        texts.push('');
+        errors.push({ imagePath, error: String(err && err.message ? err.message : err) });
+      }
+    }
+  } finally {
+    await worker.terminate();
+  }
+
+  return { texts, errors };
+}
+
+function scoreOcrRichness(text, stockHits) {
+  const normalized = normalizeOcrText(text);
+  const lenScore = Math.min(5, Math.floor(normalized.length / 20));
+  const numericScore = /\d{2,}/.test(normalized) ? 2 : 0;
+  const stockScore = Math.min(4, (Array.isArray(stockHits) ? stockHits.length : 0) * 2);
+  return { score: lenScore + numericScore + stockScore, lenScore, numericScore, stockScore };
+}
+
+function sampleArrayEvenly(items, maxCount) {
+  if (!Array.isArray(items) || items.length <= maxCount) return items || [];
+  const sampled = [];
+  const step = items.length / maxCount;
+  for (let i = 0; i < maxCount; i++) {
+    const idx = Math.min(items.length - 1, Math.floor(i * step));
+    if (!sampled.includes(items[idx])) sampled.push(items[idx]);
+  }
+  return sampled;
+}
+
+async function selectKeySlides(imageDir, opts = {}) {
+  const files = await listJpgFiles(imageDir);
+  const absPaths = files.map((f) => path.join(imageDir, f));
+
+  const { runs, warnings } = await computeNearDuplicateRuns(absPaths, opts);
+
+  const maxOcrImages = Math.max(1, Number(opts.maxOcrImages || CURATE_OCR_MAX_IMAGES));
+  let sampledRuns = runs;
+  let ocrCapped = false;
+  if (runs.length > maxOcrImages) {
+    sampledRuns = sampleArrayEvenly(runs, maxOcrImages);
+    ocrCapped = true;
+  }
+
+  const representatives = sampledRuns.map((r) => r.representativePath);
+  const { texts, errors } = await runOcrLinesSafe(representatives, 'chi_tra+eng', opts);
+  const errorSet = new Set(errors.map((e) => e.imagePath));
+
+  const allCandidates = sampledRuns.map((run, i) => {
+    const absPath = run.representativePath;
+    const text = texts[i] || '';
+    const stocks = extractStocksFromText(text);
+    const scoring = scoreOcrRichness(text, stocks);
+    const hasError = errorSet.has(absPath);
+    return {
+      file: path.basename(absPath),
+      absPath,
+      runSize: run.memberPaths.length,
+      runMemberFiles: run.memberPaths.map((p) => path.basename(p)),
+      ocrExcerpt: text.slice(0, 200),
+      ocrFull: text,
+      stocks,
+      score: hasError ? 0 : scoring.score,
+      scoreDetail: scoring,
+      ocrError: hasError,
+    };
+  });
+
+  const minScore = Number(opts.minScore ?? CURATE_MIN_SCORE);
+  let candidates = allCandidates.filter((c) => !c.ocrError && c.score >= minScore);
+  candidates.sort((a, b) => b.score - a.score);
+  if (opts.topN) candidates = candidates.slice(0, Number(opts.topN));
+
+  return {
+    candidates,
+    allCandidates,
+    totalRawFrames: absPaths.length,
+    totalRuns: runs.length,
+    ocrCapped,
+    warnings,
+    ocrErrors: errors,
+  };
+}
+
+async function writeCandidateReport(selection, outputDir, opts = {}) {
+  await fs.ensureDir(outputDir);
+  const jsonPath = path.join(outputDir, opts.jsonFileName || 'curate-report.json');
+  const mdPath = path.join(outputDir, opts.mdFileName || 'curate-report.md');
+
+  await fs.writeJson(jsonPath, selection, { spaces: 2 });
+
+  const lines = [];
+  lines.push('# 重點 Slide 候選報告');
+  lines.push('');
+  lines.push(`- 原始幀數: ${selection.totalRawFrames}`);
+  lines.push(`- 去重後段落數: ${selection.totalRuns}`);
+  lines.push(`- OCR 是否因數量上限取樣: ${selection.ocrCapped ? '是' : '否'}`);
+  lines.push(`- 入選候選數: ${selection.candidates.length}`);
+  lines.push(`- OCR 錯誤數: ${selection.ocrErrors.length}`);
+  lines.push(`- SSIM 比對警告數: ${selection.warnings.length}`);
+  lines.push('');
+  lines.push('## 入選候選清單（依分數排序）');
+  lines.push('');
+  lines.push('| 檔名 | 分數 | 段落張數 | 股票命中 | OCR 摘要 |');
+  lines.push('|---|---:|---:|---|---|');
+  for (const c of selection.candidates) {
+    const stocksText = c.stocks.map((s) => `${s.code}${s.name}`).join(', ') || '-';
+    const excerpt = (c.ocrExcerpt || '').replace(/\|/g, '\\|').slice(0, 80);
+    lines.push(`| ${c.file} | ${c.score} | ${c.runSize} | ${stocksText} | ${excerpt} |`);
+  }
+  lines.push('');
+
+  if (selection.ocrErrors.length > 0) {
+    lines.push('## OCR 錯誤');
+    lines.push('');
+    for (const e of selection.ocrErrors) {
+      lines.push(`- ${path.basename(e.imagePath)}: ${e.error}`);
+    }
+    lines.push('');
+  }
+
+  if (selection.warnings.length > 0) {
+    lines.push('## SSIM 比對警告（fail-open，視為不重複）');
+    lines.push('');
+    for (const w of selection.warnings.slice(0, 50)) {
+      lines.push(`- ${path.basename(w.a)} vs ${path.basename(w.b)}: ${w.reason}`);
+    }
+    if (selection.warnings.length > 50) lines.push(`- ...共 ${selection.warnings.length} 筆`);
+    lines.push('');
+  }
+
+  await fs.writeFile(mdPath, `${lines.join('\n')}\n`, 'utf8');
+  return { jsonPath, mdPath };
+}
+
 module.exports = {
   checkAsrPreflight,
   processDownloadedVideo,
   writeStockMarkdowns,
   summarizeSrtToMarkdown,
   extractSlidesOnly,
+  runOcrLines,
+  extractStocksFromText,
+  computeNearDuplicateRuns,
+  selectKeySlides,
+  writeCandidateReport,
 };

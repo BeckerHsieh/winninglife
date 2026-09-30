@@ -45,3 +45,7 @@
 - `downloadScantrader/downloads/`: 輸出資料（字幕、簡報圖、股票彙整）
 - `downloadScantrader/.session/`: 登入 session（本機狀態）
 - `mc/`: 交易語法檔（高風險區，禁止直接覆寫）
+## Obsidian vault 寫入規範（slides_* 整理）
+1. 大盤 `0000_2026大盤.md` 內文提到有個股檔的股票時，必須加上 wikilink（如 `[[3016嘉晶]]`，或 `[[2330台積電|台積電]]`）。
+2. 寫入 vault 不需備份（不產生 `.bak-*`）；仍採暫存檔 + 原子 rename。
+3. 每個日期區塊的文字摘要末尾須寫明「摘要來源」（節目、日期、資料來源與整理依據）。

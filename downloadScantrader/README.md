@@ -75,6 +75,30 @@ node .\downloadScantrader\extract-slides.js '.\downloadScantrader\downloads\0001
 node .\downloadScantrader\batch-media-process.js <資料夾或影片檔> [索引md輸出路徑]
 ```
 
+### 獨立腳本：重點簡報篩選並寫入 Obsidian 彙整
+
+從 `slides_*` 這類原始簡報擷取資料夾（無 OCR/無 markdown 的大量 jpg 幀）裡，自動去除近重複畫面、用 OCR 文字/數據豐富度＋股票代碼命中挑出「重點」slide，並可選擇寫入外部的 Obsidian 個人筆記 vault。
+
+第一步：只產生候選報告，**不會**動到 vault，可重複執行：
+```bash
+node .\downloadScantrader\curate-key-slides.js '.\downloadScantrader\downloads\slides_0915' --date 2026.0915 --report-only
+```
+執行後會在該資料夾內產生 `curate-report.md`（人可讀摘要）與 `curate-report.json`（完整資料），請先檢視品質再進到下一步。
+
+第二步：確認報告內容沒問題後，寫入 vault（會複製圖片到 `stock\slides\`、更新 `0000_2026大盤.md` 對應日期區塊，並同步更新 OCR 辨識出的股票代碼所對應的個股 `.md`）：
+```bash
+node .\downloadScantrader\curate-key-slides.js '.\downloadScantrader\downloads\slides_0915' --date 2026.0915 --apply --vault 'D:\DOC\OneDrive - Chunghwa Telecom Co., Ltd\0.Project\0.winninglife\stock'
+```
+
+若不想每次都輸入 `--vault`，可設定環境變數（PowerShell）：
+```bash
+$env:SCANTRADER_VAULT_PATH = 'D:\DOC\OneDrive - Chunghwa Telecom Co., Ltd\0.Project\0.winninglife\stock'
+```
+
+其他可用參數：`--top-n N`（只取分數最高的 N 張）、`--min-score N`（篩選分數門檻）、`--ssim-threshold 0.92`（近重複判定的相似度門檻）、`--dry-run`（apply 模式下只顯示會做的變更，不實際寫入）、`--force-recompute`（apply 時忽略既有報告快取重新計算）、`--backup`（預設不備份；加此參數才會建立 `.bak` 備份）。
+
+> 注意：`--apply` 會寫入 repo 之外、不受 git 版控的 Obsidian vault 檔案（`0000_2026大盤.md` 與個股 `.md`）。預設不備份（加 `--backup` 才會備份成 `<檔名>.bak-<timestamp>`）；若日期在大盤.md 裡找不到或有多筆符合，會在任何寫入前直接中止。
+
 ### 獨立腳本：YouTube 受限影片下載（Cookie）
 ```bash
 node .\downloadScantrader\yt-private-download.js --cookies-file .\downloadScantrader\.session\yt-cookies.txt <youtube-url>
@@ -95,6 +119,7 @@ node .\downloadScantrader\yt-private-download.js --cookies-file .\downloadScantr
 npm run summarize-srt -- <路徑>
 npm run extract-slides -- <路徑>
 npm run batch-process -- <路徑>
+npm run curate-key-slides -- <路徑> --date YYYY.MMDD --report-only
 ```
 
 ### 透過環境變數傳入帳密（CI/自動化用）
@@ -194,6 +219,8 @@ $env:SLIDE_MAX_FRAMES='200'
 | `extract-slides.js` | 獨立執行的簡報擷取腳本（可對資料夾批次處理）|
 | `summarize-srt.js` | 獨立執行的 SRT 彙整腳本，輸出 Markdown |
 | `batch-media-process.js` | 批次後處理：影片 + SRT + 總索引 |
+| `curate-key-slides.js` | 從原始簡報幀篩選重點 slide，輸出候選報告 / 寫入 Obsidian vault |
+| `vault-writer.js` | 純字串處理：定位/插入 Obsidian vault 的大盤與個股 markdown 區塊 |
 | `yt-private-download.js` | YouTube 受限影片下載（Cookie + yt-dlp）|
 
 ---
@@ -285,6 +312,12 @@ runDownload.bat
 | `SKIP_ASR_PREFLIGHT` | — | 設為 `1` 可略過前置環境檢查 |
 | `SCANTRADER_EMAIL` | — | 帳號（不設則互動輸入）|
 | `SCANTRADER_PASSWORD` | — | 密碼（不設則互動輸入）|
+| `SLIDE_DEDUP_SSIM_THRESHOLD` | `0.92` | `curate-key-slides.js` 判定相鄰幀是否近重複的 SSIM 門檻 |
+| `SLIDE_DEDUP_SCALE_WIDTH` | `320` | 近重複比對前縮放的寬度（像素）|
+| `SLIDE_DEDUP_REPRESENTATIVE` | `last` | 同一段落取代表幀時取 `first` 或 `last` |
+| `CURATE_OCR_MAX_IMAGES` | `400` | 單次 `curate-key-slides.js` 執行最多對幾張去重後代表幀跑 OCR |
+| `CURATE_MIN_SCORE` | `3` | 候選 slide 的最低評分門檻 |
+| `SCANTRADER_VAULT_PATH` | — | `curate-key-slides.js --apply` 預設的 Obsidian vault 路徑（未設則需用 `--vault`）|
 
 ---
 
@@ -297,3 +330,9 @@ runDownload.bat
 | Playwright 簡報截圖失敗 | ffmpeg fps 抽幀 fallback |
 | ASR 全部 backend 失敗 | 輸出錯誤版字幕 md + asr_error.log，不中止主流程 |
 | Session 過期 | 偵測到後重新要求輸入帳密 |
+| `curate-key-slides.js` 近重複比對（ffmpeg ssim）失敗 | fail-open 視為不重複，記錄警告，不中斷整批 |
+| `curate-key-slides.js` OCR 單張逾時/失敗 | 該張記 0 分排除，記錄錯誤清單，不中斷整批 |
+| `curate-key-slides.js --apply` 找不到 `--date` 對應區塊，或比對到多筆 | 整個 apply 流程中止，不寫入任何 vault 檔案 |
+| `curate-key-slides.js --apply` 圖片檔名與 vault 既有檔案衝突（內容不同） | 自動改名（`_c1` 等後綴）後複製，並在插入 markdown 時使用改名後的檔名 |
+
+> `curate-key-slides.js` 讀取的 `slides_*` 原始幀在 repo 內（`downloads/` 已加入 `.gitignore`），但 `--apply` 寫入的 Obsidian vault 完全在 repo 之外，不受 git 版控保護，因此每次寫入前都會自動備份成 `.bak-<timestamp>`。
