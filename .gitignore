@@ -1,2 +1,3 @@
 downloadScantrader/downloads/
 downloadScantrader/node_modules/
+__pycache__/
