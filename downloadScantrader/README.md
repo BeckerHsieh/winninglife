@@ -99,6 +99,23 @@ $env:SCANTRADER_VAULT_PATH = 'D:\DOC\OneDrive - Chunghwa Telecom Co., Ltd\0.Proj
 
 > 注意：`--apply` 會寫入 repo 之外、不受 git 版控的 Obsidian vault 檔案（`0000_2026大盤.md` 與個股 `.md`）。預設不備份（加 `--backup` 才會備份成 `<檔名>.bak-<timestamp>`）；若日期在大盤.md 裡找不到或有多筆符合，會在任何寫入前直接中止。
 
+### 獨立腳本：依整理計畫寫入 Obsidian vault（organize-slides-to-vault.js）
+把逐張檢視過的 `slides_*` 摘要（講者段落、圖片、重點條列、摘要來源）與個股檔圖片寫入 vault；可重複執行（以 `<!-- slides-organizer:日期 -->` 標記取代既有區塊，不會重複新增）。
+
+```bash
+# 1. 產生計畫骨架（讀 curate-report.json，沒有則列出資料夾內圖片）
+node .\downloadScantrader\organize-slides-to-vault.js --init .\downloadScantrader\downloads\slides_1002 --date 2026.1002
+# 2. 逐張檢視圖片後，編輯 downloadScantrader\plans\slides_1002.json（sections / bullets / stockEntries / source），可參考該檔範例
+# 3. 先 dry-run 預覽，再正式寫入
+node .\downloadScantrader\organize-slides-to-vault.js .\downloadScantrader\plans\slides_1002.json --dry-run
+node .\downloadScantrader\organize-slides-to-vault.js .\downloadScantrader\plans\slides_1002.json
+```
+
+- vault 路徑用 `--vault` 或環境變數 `SCANTRADER_VAULT_PATH`；預設不備份（`--backup` 才備份）。
+- bullets 內以 `[[@6488|環球晶]]` 表示個股連結，會依 vault 檔名轉成 `[[6488環球晶|環球晶]]`，找不到個股檔則退回純文字並註明「尚無個股檔」。
+- `source`（摘要來源）為必填；找不到 `--date` 對應區塊時在任何寫入前中止。
+- npm：`npm run organize-slides -- <plan.json>`
+
 ### 獨立腳本：YouTube 受限影片下載（Cookie）
 ```bash
 node .\downloadScantrader\yt-private-download.js --cookies-file .\downloadScantrader\.session\yt-cookies.txt <youtube-url>
@@ -220,6 +237,7 @@ $env:SLIDE_MAX_FRAMES='200'
 | `summarize-srt.js` | 獨立執行的 SRT 彙整腳本，輸出 Markdown |
 | `batch-media-process.js` | 批次後處理：影片 + SRT + 總索引 |
 | `curate-key-slides.js` | 從原始簡報幀篩選重點 slide，輸出候選報告 / 寫入 Obsidian vault |
+| `organize-slides-to-vault.js` | 依計畫 JSON 把已整理的 slides 摘要寫入 Obsidian vault（冪等） |
 | `vault-writer.js` | 純字串處理：定位/插入 Obsidian vault 的大盤與個股 markdown 區塊 |
 | `yt-private-download.js` | YouTube 受限影片下載（Cookie + yt-dlp）|
 

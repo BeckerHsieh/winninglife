@@ -9,6 +9,7 @@
     "summarize-srt": "node summarize-srt.js",
     "extract-slides": "node extract-slides.js",
     "curate-key-slides": "node curate-key-slides.js",
+    "organize-slides": "node organize-slides-to-vault.js",
     "batch-process": "node batch-media-process.js",
     "yt-download": "node yt-private-download.js",
     "yt-list": "node yt-private-download.js --list-only"
