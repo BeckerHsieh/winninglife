@@ -1,0 +1,2 @@
+pywinauto>=0.6.8
+Pillow>=9.0
