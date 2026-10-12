@@ -112,7 +112,8 @@ node .\downloadScantrader\organize-slides-to-vault.js .\downloadScantrader\plans
 ```
 
 - vault 路徑用 `--vault` 或環境變數 `SCANTRADER_VAULT_PATH`；預設不備份（`--backup` 才備份）。
-- bullets 內以 `[[@6488|環球晶]]` 表示個股連結，會依 vault 檔名轉成 `[[6488環球晶|環球晶]]`，找不到個股檔則退回純文字並註明「尚無個股檔」。
+- bullets 內以 `[[@6488|環球晶]]` 表示個股連結，會依 vault 檔名轉成 `[[6488環球晶|環球晶]]`。
+- 找不到個股檔時會直接新增「股票代號＋中文名稱.md」（例如 `2303聯電.md`）並插入圖片；中文名稱取 `stockEntries[].name`，其次取 `[[@代號|名稱]]` 的顯示名稱，兩者都沒有則無法命名，該股退回純文字並註明「尚無個股檔」。只被連結、沒有圖片的股票會建立空白個股檔。
 - `source`（摘要來源）為必填；找不到 `--date` 對應區塊時在任何寫入前中止。
 - npm：`npm run organize-slides -- <plan.json>`
 

@@ -128,81 +128,88 @@ async function login(email, password, headless = false) {
     throw new Error(`[登入] 未能導航到 LINE 登入頁，目前 URL：${linePage.url()}`);
   }
 
-  // ── 填入 LINE 帳號密碼 ────────────────────────────────────────────────────
-  // LINE 登入頁的 email 欄位可能是 tid / email / 電話
-  const emailSelectors = [
-    'input[name="tid"]',
-    'input[type="email"]',
-    'input[autocomplete="username"]',
-    'input[placeholder*="Email"]',
-    'input[placeholder*="email"]',
-    'input[placeholder*="電話"]',
-    'input:not([type="password"]):not([type="hidden"])',
-  ];
+  // 沒有帳密時（例如沿用 session 但已失效）不填表單，改等使用者在視窗內手動登入
+  if (!email || !password) {
+    console.log('[登入] 未提供帳密，請在瀏覽器視窗手動完成 LINE 登入（最多等待 5 分鐘）...');
+    await linePage.waitForURL((u) => !/line\.me/.test(u.href), { timeout: 300000 });
+    console.log('[登入] 偵測到已離開 LINE 登入頁，繼續...');
+  } else {
+    // ── 填入 LINE 帳號密碼 ────────────────────────────────────────────────────
+    // LINE 登入頁的 email 欄位可能是 tid / email / 電話
+    const emailSelectors = [
+      'input[name="tid"]',
+      'input[type="email"]',
+      'input[autocomplete="username"]',
+      'input[placeholder*="Email"]',
+      'input[placeholder*="email"]',
+      'input[placeholder*="電話"]',
+      'input:not([type="password"]):not([type="hidden"])',
+    ];
 
-  let emailInput = null;
-  for (const sel of emailSelectors) {
-    emailInput = await linePage.$(sel);
-    if (emailInput) {
-      console.log(`[登入] 找到 email 欄位：${sel}`);
-      break;
+    let emailInput = null;
+    for (const sel of emailSelectors) {
+      emailInput = await linePage.$(sel);
+      if (emailInput) {
+        console.log(`[登入] 找到 email 欄位：${sel}`);
+        break;
+      }
     }
-  }
 
-  if (!emailInput) {
-    await linePage.screenshot({ path: path.join(__dirname, 'debug-no-email.png') });
-    throw new Error('[登入] 找不到 email 輸入欄，已截圖至 debug-no-email.png');
-  }
-
-  // LINE 頁面有時輸入欄被覆蓋，用 force + dispatchEvent 確保輸入
-  await emailInput.scrollIntoViewIfNeeded();
-  await emailInput.click({ force: true, timeout: 10000 });
-  await linePage.waitForTimeout(500);
-  await emailInput.fill(email);
-
-  // 密碼
-  const pwInput = await linePage.$('input[type="password"]');
-  if (!pwInput) {
-    await linePage.screenshot({ path: path.join(__dirname, 'debug-no-pw.png') });
-    throw new Error('[登入] 找不到密碼輸入欄');
-  }
-  await pwInput.scrollIntoViewIfNeeded();
-  await pwInput.click({ force: true, timeout: 10000 });
-  await linePage.waitForTimeout(500);
-  await pwInput.fill(password);
-
-  await linePage.screenshot({ path: path.join(__dirname, 'debug-before-submit.png') });
-
-  // ── 送出表單 ──────────────────────────────────────────────────────────────
-  const submitSelectors = [
-    'button[type="submit"]',
-    'input[type="submit"]',
-    'button:has-text("登入")',
-    'button:has-text("Log in")',
-    'button:has-text("Sign in")',
-    '[class*="login-btn"]',
-    '[class*="submit"]',
-  ];
-
-  let submitBtn = null;
-  for (const sel of submitSelectors) {
-    submitBtn = await linePage.$(sel);
-    if (submitBtn) {
-      console.log(`[登入] 找到送出按鈕：${sel}`);
-      break;
+    if (!emailInput) {
+      await linePage.screenshot({ path: path.join(__dirname, 'debug-no-email.png') });
+      throw new Error('[登入] 找不到 email 輸入欄，已截圖至 debug-no-email.png');
     }
-  }
 
-  if (!submitBtn) {
-    await linePage.screenshot({ path: path.join(__dirname, 'debug-no-submit.png') });
-    throw new Error('[登入] 找不到送出按鈕');
-  }
+    // LINE 頁面有時輸入欄被覆蓋，用 force + dispatchEvent 確保輸入
+    await emailInput.scrollIntoViewIfNeeded();
+    await emailInput.click({ force: true, timeout: 10000 });
+    await linePage.waitForTimeout(500);
+    await emailInput.fill(email);
 
-  console.log('[登入] 送出 LINE 登入...');
-  await submitBtn.click();
-  await linePage.waitForTimeout(4000);
-  console.log('[登入] 送出後 URL:', linePage.url());
-  await linePage.screenshot({ path: path.join(__dirname, 'debug-after-submit.png') });
+    // 密碼
+    const pwInput = await linePage.$('input[type="password"]');
+    if (!pwInput) {
+      await linePage.screenshot({ path: path.join(__dirname, 'debug-no-pw.png') });
+      throw new Error('[登入] 找不到密碼輸入欄');
+    }
+    await pwInput.scrollIntoViewIfNeeded();
+    await pwInput.click({ force: true, timeout: 10000 });
+    await linePage.waitForTimeout(500);
+    await pwInput.fill(password);
+
+    await linePage.screenshot({ path: path.join(__dirname, 'debug-before-submit.png') });
+
+    // ── 送出表單 ──────────────────────────────────────────────────────────────
+    const submitSelectors = [
+      'button[type="submit"]',
+      'input[type="submit"]',
+      'button:has-text("登入")',
+      'button:has-text("Log in")',
+      'button:has-text("Sign in")',
+      '[class*="login-btn"]',
+      '[class*="submit"]',
+    ];
+
+    let submitBtn = null;
+    for (const sel of submitSelectors) {
+      submitBtn = await linePage.$(sel);
+      if (submitBtn) {
+        console.log(`[登入] 找到送出按鈕：${sel}`);
+        break;
+      }
+    }
+
+    if (!submitBtn) {
+      await linePage.screenshot({ path: path.join(__dirname, 'debug-no-submit.png') });
+      throw new Error('[登入] 找不到送出按鈕');
+    }
+
+    console.log('[登入] 送出 LINE 登入...');
+    await submitBtn.click();
+    await linePage.waitForTimeout(4000);
+    console.log('[登入] 送出後 URL:', linePage.url());
+    await linePage.screenshot({ path: path.join(__dirname, 'debug-after-submit.png') });
+  }
 
   // ── 處理 LINE 授權/同意頁（若出現）──────────────────────────────────────
   const agreeSelectors = [

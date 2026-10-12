@@ -16,12 +16,17 @@
  *   date          YYYY.MMDD，對應 0000_2026大盤.md 的 "# YYYY.MMDD" 標題
  *   folder        slides 資料夾（相對於計畫檔所在目錄）
  *   sections[]    { title, images[], bullets[] } — 依序寫入該日區塊
- *   stockEntries[]{ code, tag, images[] }       — 以 4 位數代碼比對個股檔並在最前面插入該日圖片
+ *   stockEntries[]{ code, name?, tag, images[] }     — 以 4 位數代碼比對個股檔並在最前面插入該日圖片
  *   noteEntries[] { file, tag, images[] }       — 非個股檔（如 0000貴金屬.md）的同類插入
  *   source        「摘要來源」文字（必填，Obsidian 規範）
  *
  * bullets 內可用 [[@6488]] 或 [[@6488|環球晶]]，執行時會依 vault 內檔名轉成
- * [[6488環球晶]] / [[6488環球晶|環球晶]]；找不到個股檔則退回純文字。
+ * [[6488環球晶]] / [[6488環球晶|環球晶]]。
+ *
+ * 找不到個股檔時會直接新增「股票代號+中文名稱.md」（例如 2303聯電.md）：
+ *   中文名稱取 stockEntries[].name，其次取 [[@代號|名稱]] 第一次出現的顯示名稱；
+ *   都沒有名稱時無法命名，該股票退回純文字（標註「尚無個股檔」）並略過。
+ *   只被 wikilink 提到、沒有圖片的股票會建立空白個股檔，讓連結有對象。
  */
 
 const fs = require('fs-extra');
@@ -98,17 +103,48 @@ async function runInit(cli) {
   console.log(`圖片 ${images.length} 張；請逐張檢視後拆成 sections、填寫 bullets / stockEntries / source，再執行寫入。`);
 }
 
-async function resolveWikilinks(text, vaultPath, cache) {
-  const re = /\[\[@(\d{4})(?:\|([^\]]+))?\]\]/g;
-  const codes = [...new Set([...text.matchAll(re)].map((m) => m[1]))];
-  for (const code of codes) {
-    if (!cache.has(code)) {
-      const found = await findStockFileByCode(vaultPath, code);
-      cache.set(code, found.ok ? path.basename(found.file, '.md') : null);
+const WIKILINK_RE = /\[\[@(\d{4})(?:\|([^\]]+))?\]\]/g;
+
+function safeFileName(name) {
+  return String(name).replace(/[\\/:*?"<>|]/g, '').trim();
+}
+
+/** 蒐集代碼 → 中文名稱：stockEntries[].name 優先，其次取 [[@代碼|名稱]] 第一次出現的顯示名稱。 */
+function collectStockNames(plan) {
+  const names = new Map();
+  const texts = [plan.source, ...(plan.sections || []).flatMap((s) => [s.title, ...(s.bullets || [])])];
+  for (const t of texts) {
+    for (const m of String(t || '').matchAll(WIKILINK_RE)) {
+      if (m[2] && !names.has(m[1]) && safeFileName(m[2])) names.set(m[1], safeFileName(m[2]));
     }
   }
-  return text.replace(re, (_, code, display) => {
-    const base = cache.get(code);
+  for (const en of plan.stockEntries || []) {
+    if (en.name && safeFileName(en.name)) names.set(String(en.code), safeFileName(en.name));
+  }
+  return names;
+}
+
+/**
+ * ctx = { cache: code→檔名(不含.md)|null, names: code→中文名, pending: code→檔名 }
+ * 找不到個股檔但知道中文名稱時，連結指向「代號+中文名稱」，並登記到 pending 待新增該檔。
+ */
+async function resolveWikilinks(text, vaultPath, ctx) {
+  const codes = [...new Set([...text.matchAll(WIKILINK_RE)].map((m) => m[1]))];
+  for (const code of codes) {
+    if (ctx.cache.has(code)) continue;
+    const found = await findStockFileByCode(vaultPath, code);
+    if (found.ok) {
+      ctx.cache.set(code, path.basename(found.file, '.md'));
+    } else if (found.reason === 'not-found' && ctx.names.has(code)) {
+      const base = `${code}${ctx.names.get(code)}`;
+      ctx.cache.set(code, base);
+      ctx.pending.set(code, base);
+    } else {
+      ctx.cache.set(code, null);
+    }
+  }
+  return text.replace(WIKILINK_RE, (_, code, display) => {
+    const base = ctx.cache.get(code);
     if (!base) return display ? `${display}（${code}，尚無個股檔）` : `${code}（尚無個股檔）`;
     return display ? `[[${base}|${display}]]` : `[[${base}]]`;
   });
@@ -162,15 +198,15 @@ async function runApply(cli) {
   copy.renamed.forEach((r) => console.log(`  ${r.from} -> ${r.to}`));
 
   // 組出日期區塊內容
-  const cache = new Map();
+  const ctx = { cache: new Map(), names: collectStockNames(plan), pending: new Map() };
   const bodyLines = [];
   for (const sec of plan.sections) {
     bodyLines.push(`**${sec.title}**`);
     (sec.images || []).forEach((f) => bodyLines.push(`![[${vaultName(f)}]]`));
-    for (const b of sec.bullets || []) bodyLines.push(`- ${await resolveWikilinks(b, vaultPath, cache)}`);
+    for (const b of sec.bullets || []) bodyLines.push(`- ${await resolveWikilinks(b, vaultPath, ctx)}`);
     bodyLines.push('');
   }
-  bodyLines.push(`**摘要來源**：${await resolveWikilinks(plan.source, vaultPath, cache)}`);
+  bodyLines.push(`**摘要來源**：${await resolveWikilinks(plan.source, vaultPath, ctx)}`);
   const mk = markers(plan.date);
   const blockBody = [mk.start, ...bodyLines, mk.end];
 
@@ -206,11 +242,28 @@ async function runApply(cli) {
   const targets = [];
   for (const en of plan.stockEntries || []) {
     const found = await findStockFileByCode(vaultPath, en.code);
-    if (!found.ok) {
-      console.log(`個股 ${en.code} 找不到個股檔（${found.reason}），略過`);
+    if (found.ok) {
+      targets.push({ label: found.file, p: found.path, en });
       continue;
     }
-    targets.push({ label: found.file, p: found.path, en });
+    const name = ctx.names.get(String(en.code));
+    if (found.reason === 'not-found' && name) {
+      const file = `${en.code}${name}.md`;
+      ctx.pending.delete(String(en.code)); // 由下方 prependStockEntry 一併建立
+      targets.push({ label: `${file}（新建）`, p: path.join(vaultPath, file), en });
+    } else {
+      const why = found.reason === 'not-found'
+        ? '找不到個股檔且計畫未提供中文名稱（請在 stockEntries 加 name 或在 bullets 用 [[@代號|名稱]]）'
+        : `${found.reason}（代號比對到多個檔案，請手動確認）`;
+      console.log(`個股 ${en.code} ${why}，略過`);
+    }
+  }
+  // 只被 wikilink 提到、沒有圖片的新股票：建立空白個股檔，讓連結有對象
+  for (const [code, base] of ctx.pending) {
+    const p = path.join(vaultPath, `${base}.md`);
+    if (await fs.pathExists(p)) continue;
+    if (!cli.dryRun) await writeAtomic(p, '', false);
+    console.log(`${base}.md：${cli.dryRun ? '[dry-run] 將新建空白個股檔' : '已新建空白個股檔'}`);
   }
   for (const en of plan.noteEntries || []) {
     const p = path.join(vaultPath, en.file);

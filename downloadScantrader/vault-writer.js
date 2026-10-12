@@ -141,7 +141,30 @@ async function findStockFileByCode(vaultStockDir, code) {
   return { ok: true, file: matches[0], path: path.join(vaultStockDir, matches[0]) };
 }
 
-/** 在個股 markdown 檔最前面插入新區塊（新→舊排序），已存在的圖片會自動跳過。 */
+/**
+ * 個股檔結構：置頂的基本資料 → 單獨一行 `---` → 依日期新→舊的文章。
+ * 新文章一律插在第一條 `---` 之後；開頭的 YAML frontmatter（首行 `---` 到下一個 `---`）不算分隔線。
+ * 檔案沒有分隔線時：空檔建立「分隔線＋文章」；既有內容無法判斷哪些是置頂，維持舊行為插在最前面。
+ */
+function insertBelowSeparator(original, blockLines, eol) {
+  if (!original) return ['', '---', '', ...blockLines].join(eol) + eol;
+
+  const lines = original.split(/\r?\n/);
+  let from = 0;
+  if (lines[0].trim() === '---') {
+    const close = lines.findIndex((l, i) => i > 0 && l.trim() === '---');
+    if (close > 0) from = close + 1;
+  }
+  const sep = lines.findIndex((l, i) => i >= from && l.trim() === '---');
+  if (sep < 0) return `${blockLines.join(eol)}${eol}${original}`;
+
+  // 分隔線後若已有空行就保留一行空白，避免文章貼在線上
+  let at = sep + 1;
+  while (at < lines.length && lines[at].trim() === '') at += 1;
+  return [...lines.slice(0, sep + 1), '', ...blockLines, ...lines.slice(at)].join(eol);
+}
+
+/** 在個股 markdown 檔的第一條 `---` 之後插入新區塊（新→舊排序），已存在的圖片會自動跳過。 */
 async function prependStockEntry(stockMdPath, dateDotted, tagText, filenames = [], opts = {}) {
   const exists = await fs.pathExists(stockMdPath);
   const original = exists ? await fs.readFile(stockMdPath, 'utf8') : '';
@@ -164,9 +187,7 @@ async function prependStockEntry(stockMdPath, dateDotted, tagText, filenames = [
 
   const headerSuffix = tagText ? ` ${tagText}` : '';
   const blockLines = [`# ${dateDotted}${headerSuffix}`, ...inserted.map(buildEmbedLine), ''];
-  const newContent = original
-    ? `${blockLines.join(eol)}${eol}${original}`
-    : `${blockLines.join(eol)}${eol}`;
+  const newContent = insertBelowSeparator(original, blockLines, eol);
 
   const tmpPath = `${stockMdPath}.tmp-${Date.now()}`;
   await fs.writeFile(tmpPath, newContent, 'utf8');
