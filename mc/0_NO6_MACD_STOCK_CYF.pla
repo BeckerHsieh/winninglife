@@ -1,0 +1,145 @@
+// ==============================
+// Strategy: MACD + Direction + Time + Volatility Control  (v2: independent short side)
+// Based on 0_NO6_MACD_STOCK (stype=5 threshold-cross logic).
+// CYF version: long and short defaults optimized on CYF1 1min 2025/6~2026/10
+// (commission 600/fill, MaxBarsBack 800). Same logic as 0_NO6_MACD_STOCK2.
+// ==============================
+
+Inputs:
+    tradeSignal(0),     // 1=Long only, 0=Both, -1=Short only
+    pSTime(0915),
+    pETime(2400),
+    pBEntryLen(1),
+    AvgFitr(60),
+    HLScope(8),
+    // ---- Long ----
+    FastAvg(10),
+    SlowAvg(60),
+    macdFast(10),
+    macdSlow(240),
+    macdSmooth(9),
+    LEntry(0.2),        // long entry: xmacd crosses over
+    LExit(-3),          // long exit: xmacd crosses under
+    LStopPt(0),         // points, 0 = off
+    LProfitPt(80),      // points, 0 = off
+    // ---- Short ----
+    sFastAvg(20),
+    sSlowAvg(160),
+    sMacdFast(20),
+    sMacdSlow(300),
+    sMacdSmooth(9),
+    SEntry(-3),         // short entry: short xmacd crosses under
+    SExit(5),           // short exit: short xmacd crosses over
+    SStopPt(0),         // points, 0 = off
+    SProfitPt(30);     // points, 0 = off
+
+Vars:
+    dif(0), dem(0), xmacd(0),
+    sDif(0), sDem(0), sXmacd(0),
+    FastMA(0), SlowMA(0), sFastMA(0), sSlowMA(0),
+    LongSignal(false), LongExitSig(false),
+    ShortSignal(false), ShortExitSig(false),
+    EntryCount(0),
+    ConditionTime(false),
+    HLRange(0),
+    MaxEntries(0),
+    AllowLong(false),
+    AllowShort(false);
+
+// ==============================
+// Direction control
+// ==============================
+AllowLong  = (tradeSignal = 1) or (tradeSignal = 0);
+AllowShort = (tradeSignal = -1) or (tradeSignal = 0);
+
+// ==============================
+// Indicator calculation
+// ==============================
+FastMA  = Average(Close, FastAvg);
+SlowMA  = Average(Close, SlowAvg);
+sFastMA = Average(Close, sFastAvg);
+sSlowMA = Average(Close, sSlowAvg);
+
+dif   = MACD(Close, macdFast, macdSlow);
+dem   = XAverage(dif, macdSmooth);
+xmacd = dif - dem;
+
+sDif   = MACD(Close, sMacdFast, sMacdSlow);
+sDem   = XAverage(sDif, sMacdSmooth);
+sXmacd = sDif - sDem;
+
+LongSignal   = xmacd crosses over LEntry;
+LongExitSig  = xmacd crosses under LExit;
+ShortSignal  = sXmacd crosses under SEntry;
+ShortExitSig = sXmacd crosses over SExit;
+
+// Time filter
+ConditionTime = (t > pSTime) and (t < pETime);
+
+// ==============================
+// Reset entry count (daily)
+// ==============================
+If Date <> Date[1] then
+    EntryCount = 0;
+
+// ==============================
+// Volatility filter
+// ==============================
+HLRange = Highest(High, AvgFitr) - Lowest(Low, AvgFitr);
+
+If HLRange > HLScope then
+Begin
+    MaxEntries = pBEntryLen + IntPortion(HLRange / HLScope);
+
+    // Long Entry
+    If ConditionTime
+    and MarketPosition = 0
+    and EntryCount < MaxEntries
+    and AllowLong
+    and FastMA > SlowMA
+    and LongSignal then
+    Begin
+        Buy("MACD-L") next bar at market;
+        EntryCount = EntryCount + 1;
+    End;
+
+    // Short Entry
+    If ConditionTime
+    and MarketPosition = 0
+    and EntryCount < MaxEntries
+    and AllowShort
+    and sFastMA < sSlowMA
+    and ShortSignal then
+    Begin
+        SellShort("MACD-S") next bar at market;
+        EntryCount = EntryCount + 1;
+    End;
+End;
+
+// ==============================
+// Signal exits
+// ==============================
+If MarketPosition = 1 and LongExitSig then
+    Sell("MACD-LX") next bar at market;
+
+If MarketPosition = -1 and ShortExitSig then
+    BuyToCover("MACD-SX") next bar at market;
+
+// ==============================
+// Stop loss / profit target (points, from the bar after entry)
+// ==============================
+If MarketPosition = 1 then
+Begin
+    If LStopPt > 0 then
+        Sell("L-SL") next bar at EntryPrice - LStopPt stop;
+    If LProfitPt > 0 then
+        Sell("L-TP") next bar at EntryPrice + LProfitPt limit;
+End;
+
+If MarketPosition = -1 then
+Begin
+    If SStopPt > 0 then
+        BuyToCover("S-SL") next bar at EntryPrice + SStopPt stop;
+    If SProfitPt > 0 then
+        BuyToCover("S-TP") next bar at EntryPrice - SProfitPt limit;
+End;
