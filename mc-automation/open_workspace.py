@@ -69,9 +69,9 @@ def mc_pids():
 
 
 def title_has_workspace(title, wsp_path):
-    """視窗標題是否含工作區名稱（以單字邊界比對，避免 IRF 誤中 IRF1）。"""
+    """視窗標題是否含工作區名稱（前後不可接英數字或 -，避免 IRF 誤中 IRF1、MXF 誤中 MXF-1hr-2）。"""
     name = os.path.splitext(os.path.basename(wsp_path))[0]
-    return re.search(rf"\b{re.escape(name)}\b", title, re.IGNORECASE) is not None
+    return re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", title, re.IGNORECASE) is not None
 
 
 def find_main_window():
