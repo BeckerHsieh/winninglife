@@ -1,0 +1,147 @@
+// ==============================
+// Strategy: 0_NO6_Fast5 = Fast4 short (breakout + trend + volatility)
+//                         + MACD threshold-cross long (same logic as 0_NO6_MACD_STOCK family)
+// Long defaults optimized on MXF1 1min 2020/1~2026/10 (commission 1000/fill, MaxBarsBack 200).
+// A short entry may reverse an open long (SellShort while long); longs only enter when flat.
+// ==============================
+
+Inputs:
+    tradeSignal(0),      // 1=Long only, 0=Both, -1=Short only
+    pSTime(0915),
+    pETime(2400),
+    // ---- Short (unchanged from 0_NO6_Fast4) ----
+    pBEntryLen(3),
+    FastAvg(90),
+    SlowAvg(150),
+    AvgFitr(90),
+    HLScope(350),
+    BasePoint(150),
+    StopLossPt(300),     // points, 0 = off
+    TakeProfitPt(1200),  // points, 0 = off
+    // ---- Long (MACD) ----
+    lBEntryLen(1),
+    lFastAvg(60),
+    lSlowAvg(200),
+    lAvgFitr(60),
+    lHLScope(50),
+    lMacdFast(25),
+    lMacdSlow(80),
+    lMacdSmooth(9),
+    LEntry(-5),          // long entry: xmacd crosses over
+    LExit(-60),          // long exit: xmacd crosses under
+    LStopPt(0),          // points, 0 = off
+    LProfitPt(2500);     // points, 0 = off
+
+Vars:
+    FastMA(0), SlowMA(0), Filter(0), HH(0), LL(0),
+    HLRange(0), MaxEntries(0), EntryCount(0),
+    lFastMA(0), lSlowMA(0), lHLRange(0), lMaxEntries(0), lEntryCount(0),
+    dif(0), dem(0), xmacd(0),
+    LongSignal(false), LongExitSig(false), LongOrder(false),
+    ConditionTime(false),
+    AllowLong(false),
+    AllowShort(false);
+
+// ==============================
+// Direction control
+// ==============================
+AllowLong  = (tradeSignal = 1) or (tradeSignal = 0);
+AllowShort = (tradeSignal = -1) or (tradeSignal = 0);
+
+// ==============================
+// Indicator calculation
+// ==============================
+FastMA = Average(Close, FastAvg);
+SlowMA = Average(Close, SlowAvg);
+Filter = Average(Close, AvgFitr);
+HH = Highest(High, AvgFitr)[1];
+LL = Lowest(Low, AvgFitr)[1];
+HLRange = Highest(High, AvgFitr) - Lowest(Low, AvgFitr);
+
+lFastMA = Average(Close, lFastAvg);
+lSlowMA = Average(Close, lSlowAvg);
+lHLRange = Highest(High, lAvgFitr) - Lowest(Low, lAvgFitr);
+
+dif   = MACD(Close, lMacdFast, lMacdSlow);
+dem   = XAverage(dif, lMacdSmooth);
+xmacd = dif - dem;
+LongSignal  = xmacd crosses over LEntry;
+LongExitSig = xmacd crosses under LExit;
+
+ConditionTime = (t > pSTime) and (t < pETime);
+
+// ==============================
+// Reset entry counts (daily)
+// ==============================
+If Date <> Date[1] then
+Begin
+    EntryCount = 0;
+    lEntryCount = 0;
+End;
+
+// ==============================
+// Long Entry (MACD, only when flat)
+// ==============================
+LongOrder = false;
+If lHLRange > lHLScope then
+Begin
+    lMaxEntries = lBEntryLen + IntPortion(lHLRange / lHLScope);
+    If ConditionTime
+    and MarketPosition = 0
+    and lEntryCount < lMaxEntries
+    and AllowLong
+    and lFastMA > lSlowMA
+    and LongSignal then
+    Begin
+        Buy("MACD-L") next bar at market;
+        lEntryCount = lEntryCount + 1;
+        LongOrder = true;
+    End;
+End;
+
+// ==============================
+// Short Entry (when flat, or reversing an open long)
+// ==============================
+If HLRange > HLScope and LongOrder = false then
+Begin
+    MaxEntries = pBEntryLen + IntPortion(HLRange / HLScope);
+    If ConditionTime
+    and MarketPosition >= 0
+    and EntryCount < MaxEntries
+    and AllowShort
+    and FastMA < SlowMA
+    and Close < Filter
+    and Close < LL then
+    Begin
+        SellShort("SF2") next bar at Close[3] - BasePoint stop;
+        EntryCount = EntryCount + 1;
+    End;
+End;
+
+// ==============================
+// Signal exits
+// ==============================
+If MarketPosition = 1 and LongExitSig then
+    Sell("MACD-LX") next bar at market;
+
+If MarketPosition = -1 and FastMA > SlowMA then
+    BuyToCover("SF2Exit") next bar at market;
+
+// ==============================
+// Stop loss / profit target (points, from the bar after entry)
+// ==============================
+If MarketPosition = -1 then
+Begin
+    If StopLossPt > 0 then
+        BuyToCover("SF2SL") next bar at EntryPrice + StopLossPt stop;
+    If TakeProfitPt > 0 then
+        BuyToCover("SF2TP") next bar at EntryPrice - TakeProfitPt limit;
+End;
+
+If MarketPosition = 1 then
+Begin
+    If LStopPt > 0 then
+        Sell("L-SL") next bar at EntryPrice - LStopPt stop;
+    If LProfitPt > 0 then
+        Sell("L-TP") next bar at EntryPrice + LProfitPt limit;
+End;
