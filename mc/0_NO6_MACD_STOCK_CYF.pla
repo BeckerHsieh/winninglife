@@ -44,7 +44,11 @@ Vars:
     HLRange(0),
     MaxEntries(0),
     AllowLong(false),
-    AllowShort(false);
+    AllowShort(false),
+    PrevClose(0),
+    UpLimit(99999),
+    DnLimit(0),
+    TgtPx(0);
 
 // ==============================
 // Direction control
@@ -77,10 +81,17 @@ ShortExitSig = sXmacd crosses over SExit;
 ConditionTime = (t > pSTime) and (t < pETime);
 
 // ==============================
-// Reset entry count (daily)
+// Reset entry count + daily price limit (daily)
+// Stock futures limit is +/-10% of prior settlement; use prior close with 0.5% buffer
+// so TP/SL orders beyond the limit are not sent (broker rejects them).
 // ==============================
 If Date <> Date[1] then
+Begin
     EntryCount = 0;
+    PrevClose  = Close[1];
+    UpLimit    = PrevClose * 1.095;
+    DnLimit    = PrevClose * 0.905;
+End;
 
 // ==============================
 // Volatility filter
@@ -127,19 +138,36 @@ If MarketPosition = -1 and ShortExitSig then
 
 // ==============================
 // Stop loss / profit target (points, from the bar after entry)
+// Skipped when the price is outside today's limit range (cannot fill anyway).
 // ==============================
 If MarketPosition = 1 then
 Begin
     If LStopPt > 0 then
-        Sell("L-SL") next bar at EntryPrice - LStopPt stop;
+    Begin
+        TgtPx = EntryPrice - LStopPt;
+        If TgtPx > DnLimit then
+            Sell("L-SL") next bar at TgtPx stop;
+    End;
     If LProfitPt > 0 then
-        Sell("L-TP") next bar at EntryPrice + LProfitPt limit;
+    Begin
+        TgtPx = EntryPrice + LProfitPt;
+        If TgtPx < UpLimit then
+            Sell("L-TP") next bar at TgtPx limit;
+    End;
 End;
 
 If MarketPosition = -1 then
 Begin
     If SStopPt > 0 then
-        BuyToCover("S-SL") next bar at EntryPrice + SStopPt stop;
+    Begin
+        TgtPx = EntryPrice + SStopPt;
+        If TgtPx < UpLimit then
+            BuyToCover("S-SL") next bar at TgtPx stop;
+    End;
     If SProfitPt > 0 then
-        BuyToCover("S-TP") next bar at EntryPrice - SProfitPt limit;
+    Begin
+        TgtPx = EntryPrice - SProfitPt;
+        If TgtPx > DnLimit then
+            BuyToCover("S-TP") next bar at TgtPx limit;
+    End;
 End;
