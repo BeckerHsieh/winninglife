@@ -82,15 +82,15 @@ ConditionTime = (t > pSTime) and (t < pETime);
 
 // ==============================
 // Reset entry count + daily price limit (daily)
-// Stock futures limit is +/-10% of prior settlement; use prior close with 0.5% buffer
+// Stock futures limit is +/-10% of prior settlement; use prior close with 1% buffer (settlement vs close + tick rounding)
 // so TP/SL orders beyond the limit are not sent (broker rejects them).
 // ==============================
 If Date <> Date[1] then
 Begin
     EntryCount = 0;
     PrevClose  = Close[1];
-    UpLimit    = PrevClose * 1.095;
-    DnLimit    = PrevClose * 0.905;
+    UpLimit    = PrevClose * 1.09;
+    DnLimit    = PrevClose * 0.91;
 End;
 
 // ==============================
