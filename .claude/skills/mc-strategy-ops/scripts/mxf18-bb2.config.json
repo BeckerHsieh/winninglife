@@ -1,0 +1,50 @@
+{
+ "deploy": true,
+ "baseExitsOnShort": true,
+ "sMod": {
+  "stopPct": 100,
+  "trailStartPct": 150,
+  "trailBackPct": 100
+ },
+ "copies": [
+  {
+   "tradeSignal": 1,
+   "pSTime": 950,
+   "pETime": 2400,
+   "pBEntryLen": 47,
+   "FastAvg": 10,
+   "SlowAvg": 60,
+   "AvgFitr": 120,
+   "hLFitr": 120,
+   "bbStd": 1,
+   "loseCntFilter": 2
+  },
+  {
+   "tradeSignal": 1,
+   "pSTime": 1,
+   "pETime": 400,
+   "pBEntryLen": 47,
+   "FastAvg": 10,
+   "SlowAvg": 60,
+   "AvgFitr": 120,
+   "hLFitr": 40,
+   "bbStd": 1,
+   "loseCntFilter": 2
+  },
+  {
+   "tradeSignal": -1,
+   "pBEntryLen": 47,
+   "FastAvg": 5,
+   "SlowAvg": 45,
+   "AvgFitr": 120,
+   "hLFitr": 20,
+   "bbStd": 2,
+   "loseCntFilter": 9,
+   "trendLen": 1000,
+   "pSTime": 0,
+   "pETime": 2400
+  }
+ ],
+ "sepLoseCnt": true,
+ "symExit": false
+}
