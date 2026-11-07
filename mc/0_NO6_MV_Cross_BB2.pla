@@ -1,0 +1,141 @@
+// ==============================
+// 0_NO6_MV_Cross_BB2  (2026/11/07)  (renamed from 0_NO5_MV_Cross_BB2; logic unchanged)
+// Based on 0_NO5_MV_Cross_BB (MXF-18, 18 min). With tradeSignal=1 and the new inputs at
+// their defaults it behaves exactly like the original long-only copies (verified by a
+// bar-by-bar replica: 417/417 trades identical to the MC report 2021/2~2026/11).
+// Changes for running a separate short copy on the same chart:
+//  1. loseCnt is kept per direction: a long copy counts only previous LONG trades,
+//     a short copy only previous SHORT trades (original used PositionProfit(1),
+//     which would mix long and short results once shorts exist).
+//  2. Exits are direction-guarded: long copies emit only Bc/Bc_s, short copies only Sc/Sc_b.
+//  3. trendLen (0=off): longs need Close > Average(Close,trendLen), shorts Close < it.
+//  4. Short copy own exits (percent of entry price, 0=off):
+//     sStopPct   : buy-stop at EntryPrice*(1+sStopPct/100)
+//     sTrailStart: once max open profit >= EntryPrice*sTrailStart/100,
+//     sTrailBack : buy-stop at (best price + EntryPrice*sTrailBack/100)
+//  5. sSymExit=true: short exits on FastMA>SlowMA alone (mirror of Bc_s).
+// MXF-18 recommended setup: copy #1/#2 = original long params; copy #3 (short) =
+//  tradeSignal(-1), pSTime(0), pETime(2400), pBEntryLen(47), FastAvg(5), SlowAvg(45),
+//  AvgFitr(120), hLFitr(20), bbStd(2), loseCntFilter(9), trendLen(1000),
+//  sStopPct(1), sTrailStart(1.5), sTrailBack(1), sSymExit(false)
+// ==============================
+
+Inputs : tradeSignal(1),pSTime(0950),pETime(2400),pBEntryLen(47);
+Inputs: Price(Close), FastAvg(10), SlowAvg(60), AvgFitr(120), hLFitr(40);
+Inputs: bbStd(1),loseCntFilter(2);
+Inputs: trendLen(0), sStopPct(0), sTrailStart(0), sTrailBack(0), sSymExit(false);
+Vars:
+  tradeSuccesses(0),
+  tradeFailures(0),
+  loseCnt(0),
+  myDir(0),
+  prevProfit(0),
+  kPos(0),
+  foundPos(false),
+  TrendMA(0),
+  MaxPP(0),
+  TgtPx(0);
+Vars:
+  FastMA(0),
+  SlowMA(0),
+  Filter (0),
+  FilterUp(0),
+  FilterDown(0),
+  upBand(close),
+  downBand(close),
+  up2Band(close),
+  down2Band(close);
+
+
+FastMA = Average (Price, FastAvg);
+SlowMA = Average (Price, SlowAvg);
+Filter = Average (Price, AvgFitr);
+
+// direction this copy trades: 1 long, -1 short, 0 both (shared count = original behaviour)
+myDir = 0;
+If tradeSignal = 1 then myDir = 1;
+If tradeSignal = -1 then myDir = -1;
+
+//success & lose trade Count (per direction)
+if (barssinceentry = 0 and marketposition <> 0 and (myDir = 0 or marketposition = myDir)) then begin
+    prevProfit = 0;
+    if myDir = 0 then
+        prevProfit = positionprofit(1)
+    else begin
+        foundPos = false;
+        for kPos = 1 to 50 begin
+            if foundPos = false and marketposition(kPos) = myDir then begin
+                prevProfit = positionprofit(kPos);
+                foundPos = true;
+            end;
+        end;
+    end;
+    if (prevProfit > 0) then begin
+        tradeSuccesses = tradeSuccesses + 1;
+        loseCnt = 0;
+    end else begin
+        tradeFailures = tradeFailures + 1;
+        loseCnt = loseCnt + 1;
+    end;
+end;
+
+
+// Filter
+upBand=bollingerband(Price,AvgFitr,bbStd);
+up2Band=bollingerband(Price,AvgFitr,bbStd*2);
+downBand=bollingerband(Price,AvgFitr,-bbStd);
+down2Band=bollingerband(Price,AvgFitr,-bbStd*2);
+FilterUp=Filter;
+FilterDown=Filter;
+if (loseCntFilter >= loseCnt) then begin
+    FilterUp=upBand;
+    FilterDown=downBand;
+end else begin
+    FilterUp=up2Band;
+    FilterDown=down2Band;
+end;
+
+Condition1 = Close > Filter and Close > FilterUp and Close >= Highest(Close, loseCnt * hLFitr);
+Condition2 = Close < Filter and Close < FilterDown and Close <= Lowest(Close, loseCnt * hLFitr);
+
+// Trend filter
+If trendLen > 0 then
+    TrendMA = Average(Close, trendLen);
+
+
+// ---- Long side ----
+IF tradeSignal <> -1 and t>pSTime and t<pETime and (barssinceexit(1) > pBEntryLen or totaltrades = 0)
+    And FastMA > SlowMA
+    And (trendLen <= 0 or Close > TrendMA)
+    And Condition1
+    Then
+  buy("Bc") next bar at market;
+IF tradeSignal <> -1 and t>pSTime and t<pETime
+    And FastMA < SlowMA Then
+  Sell("Bc_s") next bar at market;
+
+// ---- Short side ----
+IF tradeSignal <> 1 and t>pSTime and t<pETime and (barssinceexit(1) > pBEntryLen or totaltrades = 0)
+    And FastMA < SlowMA
+    And (trendLen <= 0 or Close < TrendMA)
+    AND Condition2 Then
+  sellshort("Sc") next bar at market;
+IF tradeSignal <> 1 and t>pSTime and t<pETime
+    And FastMA > SlowMA
+    AND (sSymExit or Condition1) Then
+  buytocover("Sc_b") next bar at market;
+
+// ---- Short copy own exits (percent of entry price) ----
+If tradeSignal = -1 and marketposition = -1 then begin
+    If sStopPct > 0 then begin
+        TgtPx = Round(EntryPrice * (1 + sStopPct / 100), 0);
+        buytocover("S2_SL") next bar at TgtPx stop;
+    end;
+    If sTrailStart > 0 then begin
+        MaxPP = MaxPositionProfit / BigPointValue;
+        If MaxPP >= EntryPrice * sTrailStart / 100 then begin
+            TgtPx = Round(EntryPrice - MaxPP + EntryPrice * sTrailBack / 100, 0);
+            buytocover("S2_TS") next bar at TgtPx stop;
+        end;
+    end;
+end;
