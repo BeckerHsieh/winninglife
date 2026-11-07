@@ -4,12 +4,15 @@
 // Long side keeps the original IRF parameters; short side has its own MA filter,
 // MACD lengths, entry/exit thresholds and stop/target.
 // Short defaults optimized on IRF1 1min 2026/1~10 (commission 600/fill).
+// v3 (2026/11/06): session-end guard + next-day price limit + optional marketable-limit entry.
 // ==============================
 
 Inputs:
     tradeSignal(0),     // 1=Long only, 0=Both, -1=Short only
     pSTime(0915),
     pETime(2400),
+    pLastBar(1345),     // time stamp of the session's last bar (stock futures close 13:45)
+    pEntryTk(0),        // 0 = market entry; N>0 = limit at Close +/- N ticks (marketable limit)
     pBEntryLen(1),
     AvgFitr(60),
     HLScope(8),
@@ -49,7 +52,13 @@ Vars:
     PrevClose(0),
     UpLimit(99999),
     DnLimit(0),
-    TgtPx(0);
+    IsLastBar(false),
+    OrdUp(99999),
+    OrdDn(0),
+    LExitPend(false),
+    SExitPend(false),
+    TgtPx(0),
+    TkSz(0);
 
 // ==============================
 // Direction control
@@ -78,9 +87,6 @@ LongExitSig  = xmacd crosses under LExit;
 ShortSignal  = sXmacd crosses under SEntry;
 ShortExitSig = sXmacd crosses over SExit;
 
-// Time filter
-ConditionTime = (t > pSTime) and (t < pETime);
-
 // ==============================
 // Reset entry count + daily price limit (daily)
 // Stock futures limit is +/-10% of prior settlement; use prior close with 1% buffer (settlement vs close + tick rounding)
@@ -93,6 +99,30 @@ Begin
     UpLimit    = PrevClose * 1.09;
     DnLimit    = PrevClose * 0.91;
 End;
+
+// ==============================
+// Session-end guard
+// Orders generated on the last bar are live on the NEXT DAY's first bar:
+//  - market orders sent after 13:45 are rejected (no fill, strategy/broker position mismatch)
+//  - TP/SL prices checked against TODAY's limits can exceed TOMORROW's limits
+//    (e.g. short after a -9% day: S-SL < today's UpLimit but > tomorrow's UpLimit).
+// So on the last bar: no new entries, signal exits are deferred to the next session,
+// and TP/SL prices are checked against tomorrow's estimated limits (today's close +/- 9%).
+// ==============================
+IsLastBar = (t >= pLastBar);
+If IsLastBar then
+Begin
+    OrdUp = Close * 1.09;
+    OrdDn = Close * 0.91;
+End
+Else
+Begin
+    OrdUp = UpLimit;
+    OrdDn = DnLimit;
+End;
+
+// Time filter (entries never on the last bar)
+ConditionTime = (t > pSTime) and (t < pETime) and (IsLastBar = false);
 
 // ==============================
 // Volatility filter
@@ -109,9 +139,30 @@ Begin
     and EntryCount < MaxEntries
     and AllowLong
     and FastMA > SlowMA
+    and Close < UpLimit         // near limit-up: market buy rarely fills (locked), skip
     and LongSignal then
     Begin
-        Buy("MACD-L") next bar at market;
+        If pEntryTk > 0 then
+        Begin
+            TkSz  = 5;
+            If Close < 1000 then TkSz = 1;
+            If Close < 500  then TkSz = 0.5;
+            If Close < 100  then TkSz = 0.1;
+            If Close < 50   then TkSz = 0.05;
+            If Close < 10   then TkSz = 0.01;
+            TgtPx = Close + pEntryTk * TkSz;
+            If TgtPx > OrdUp then TgtPx = OrdUp;
+            TkSz  = 5;                                     // re-tick on the order price (may cross a tier)
+            If TgtPx < 1000 then TkSz = 1;
+            If TgtPx < 500  then TkSz = 0.5;
+            If TgtPx < 100  then TkSz = 0.1;
+            If TgtPx < 50   then TkSz = 0.05;
+            If TgtPx < 10   then TkSz = 0.01;
+            TgtPx = Floor(TgtPx / TkSz + 0.000001) * TkSz;  // buy limit: round down
+            Buy("MACD-L") next bar at TgtPx limit;
+        End
+        Else
+            Buy("MACD-L") next bar at market;
         EntryCount = EntryCount + 1;
     End;
 
@@ -121,38 +172,90 @@ Begin
     and EntryCount < MaxEntries
     and AllowShort
     and sFastMA < sSlowMA
+    and Close > DnLimit         // near limit-down: market short rarely fills (locked), skip
     and ShortSignal then
     Begin
-        SellShort("MACD-S") next bar at market;
+        If pEntryTk > 0 then
+        Begin
+            TkSz  = 5;
+            If Close < 1000 then TkSz = 1;
+            If Close < 500  then TkSz = 0.5;
+            If Close < 100  then TkSz = 0.1;
+            If Close < 50   then TkSz = 0.05;
+            If Close < 10   then TkSz = 0.01;
+            TgtPx = Close - pEntryTk * TkSz;
+            If TgtPx < OrdDn then TgtPx = OrdDn;
+            TkSz  = 5;                                     // re-tick on the order price (may cross a tier)
+            If TgtPx < 1000 then TkSz = 1;
+            If TgtPx < 500  then TkSz = 0.5;
+            If TgtPx < 100  then TkSz = 0.1;
+            If TgtPx < 50   then TkSz = 0.05;
+            If TgtPx < 10   then TkSz = 0.01;
+            TgtPx = Ceiling(TgtPx / TkSz - 0.000001) * TkSz; // sell limit: round up
+            SellShort("MACD-S") next bar at TgtPx limit;
+        End
+        Else
+            SellShort("MACD-S") next bar at market;
         EntryCount = EntryCount + 1;
     End;
 End;
 
 // ==============================
-// Signal exits
+// Signal exits (deferred to the next session when the cross happens on the last bar)
 // ==============================
-If MarketPosition = 1 and LongExitSig then
-    Sell("MACD-LX") next bar at market;
+If MarketPosition <> 1  then LExitPend = false;
+If MarketPosition <> -1 then SExitPend = false;
 
-If MarketPosition = -1 and ShortExitSig then
-    BuyToCover("MACD-SX") next bar at market;
+If MarketPosition = 1 and (LongExitSig or LExitPend) then
+Begin
+    If IsLastBar then
+        LExitPend = true
+    Else
+        Sell("MACD-LX") next bar at market;
+End;
+
+If MarketPosition = -1 and (ShortExitSig or SExitPend) then
+Begin
+    If IsLastBar then
+        SExitPend = true
+    Else
+        BuyToCover("MACD-SX") next bar at market;
+End;
 
 // ==============================
 // Stop loss / profit target (points, from the bar after entry)
-// Skipped when the price is outside today's limit range (cannot fill anyway).
+// Skipped when the price is outside the limit range of the bar the order will live on
+// (OrdUp/OrdDn: today's limits, or tomorrow's estimate on the last bar).
+// Prices are rounded to the TAIFEX stock futures tick (<10:0.01, <50:0.05, <100:0.1,
+// <500:0.5, <1000:1, else 5); EntryPrice + N points can land off-tick (e.g. 498.5+80=578.5)
+// and the broker rejects it. Rounding direction keeps the order on the conservative side.
 // ==============================
 If MarketPosition = 1 then
 Begin
     If LStopPt > 0 then
     Begin
         TgtPx = EntryPrice - LStopPt;
-        If TgtPx > DnLimit then
+        TkSz  = 5;
+        If TgtPx < 1000 then TkSz = 1;
+        If TgtPx < 500  then TkSz = 0.5;
+        If TgtPx < 100  then TkSz = 0.1;
+        If TgtPx < 50   then TkSz = 0.05;
+        If TgtPx < 10   then TkSz = 0.01;
+        TgtPx = Ceiling(TgtPx / TkSz - 0.000001) * TkSz;   // sell stop: round up
+        If TgtPx > OrdDn and TgtPx < OrdUp then
             Sell("L-SL") next bar at TgtPx stop;
     End;
     If LProfitPt > 0 then
     Begin
         TgtPx = EntryPrice + LProfitPt;
-        If TgtPx < UpLimit then
+        TkSz  = 5;
+        If TgtPx < 1000 then TkSz = 1;
+        If TgtPx < 500  then TkSz = 0.5;
+        If TgtPx < 100  then TkSz = 0.1;
+        If TgtPx < 50   then TkSz = 0.05;
+        If TgtPx < 10   then TkSz = 0.01;
+        TgtPx = Ceiling(TgtPx / TkSz - 0.000001) * TkSz;   // sell limit: round up
+        If TgtPx < OrdUp and TgtPx > OrdDn then
             Sell("L-TP") next bar at TgtPx limit;
     End;
 End;
@@ -162,13 +265,27 @@ Begin
     If SStopPt > 0 then
     Begin
         TgtPx = EntryPrice + SStopPt;
-        If TgtPx < UpLimit then
+        TkSz  = 5;
+        If TgtPx < 1000 then TkSz = 1;
+        If TgtPx < 500  then TkSz = 0.5;
+        If TgtPx < 100  then TkSz = 0.1;
+        If TgtPx < 50   then TkSz = 0.05;
+        If TgtPx < 10   then TkSz = 0.01;
+        TgtPx = Floor(TgtPx / TkSz + 0.000001) * TkSz;     // buy stop: round down
+        If TgtPx < OrdUp and TgtPx > OrdDn then
             BuyToCover("S-SL") next bar at TgtPx stop;
     End;
     If SProfitPt > 0 then
     Begin
         TgtPx = EntryPrice - SProfitPt;
-        If TgtPx > DnLimit then
+        TkSz  = 5;
+        If TgtPx < 1000 then TkSz = 1;
+        If TgtPx < 500  then TkSz = 0.5;
+        If TgtPx < 100  then TkSz = 0.1;
+        If TgtPx < 50   then TkSz = 0.05;
+        If TgtPx < 10   then TkSz = 0.01;
+        TgtPx = Floor(TgtPx / TkSz + 0.000001) * TkSz;     // buy limit: round down
+        If TgtPx > OrdDn and TgtPx < OrdUp then
             BuyToCover("S-TP") next bar at TgtPx limit;
     End;
 End;

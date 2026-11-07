@@ -35,7 +35,7 @@ Inputs:
     LEntry(-5),          // long entry: xmacd crosses over
     LExit(-60),          // long exit: xmacd crosses under
     LStopPt(0),          // points, 0 = off
-    LProfitPt(2500);     // points, 0 = off
+    LProfitPt(1000);     // points, 0 = off
 
 Vars:
     FastMA(0), SlowMA(0), Filter(0), HH(0), LL(0),

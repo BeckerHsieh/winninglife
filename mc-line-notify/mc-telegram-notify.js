@@ -38,7 +38,7 @@ const fileLocation = mcPath + "mc_notice.txt";
 // const dealNames = ["MXF-1hr", "MXF-18"];
 // 依 MC_wsp 實際使用中的 workspace 分組；total 只加總 MXF 群組
 const dealGroups = [
-  { title: "MXF", showTotal: true,  names: ["MXF", "MXF-1", "MXF-18", "MXF-18-2", "MXF-1hr-2", "MXF-1hr-3", "MXF-1hr-KD"] },
+  { title: "MXF", showTotal: true,  names: ["MXF", "MXF-18", "MXF-18-2", "MXF-1hr-2", "MXF-1hr-3", "MXF-1hr-KD"] },
   { title: "",    showTotal: false, names: ["CYF", "IRF", "OWF"] },
 ];
 const FormData = require("form-data");
