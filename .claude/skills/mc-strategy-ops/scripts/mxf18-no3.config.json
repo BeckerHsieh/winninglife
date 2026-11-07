@@ -1,0 +1,64 @@
+{
+ "deploy": true,
+ "baseExitsOnShort": true,
+ "sMod": {
+  "stopPct": 80,
+  "trailStartPct": 200,
+  "trailBackPct": 100
+ },
+ "copies": [
+  {
+   "tradeSignal": 1,
+   "pSTime": 950,
+   "pETime": 2400,
+   "pBEntryLen": 10,
+   "FastAvg": 15,
+   "SlowAvg": 90,
+   "AvgFitr": 180,
+   "hLFitr": 60,
+   "bbStd": 0.75,
+   "loseCntFilter": 2,
+   "trendLen": 0
+  },
+  {
+   "tradeSignal": 1,
+   "pSTime": 1,
+   "pETime": 400,
+   "pBEntryLen": 10,
+   "FastAvg": 15,
+   "SlowAvg": 90,
+   "AvgFitr": 180,
+   "hLFitr": 60,
+   "bbStd": 0.75,
+   "loseCntFilter": 2,
+   "trendLen": 0
+  },
+  {
+   "tradeSignal": -1,
+   "pBEntryLen": 47,
+   "FastAvg": 5,
+   "SlowAvg": 45,
+   "AvgFitr": 120,
+   "hLFitr": 20,
+   "bbStd": 2,
+   "loseCntFilter": 9,
+   "trendLen": 1000,
+   "pSTime": 0,
+   "pETime": 2400,
+   "lcCap": 3
+  }
+ ],
+ "sepLoseCnt": true,
+ "symExit": false,
+ "stopLossSig": {
+  "on": false,
+  "EntryLen": 30,
+  "EntryLossPoint": 10
+ },
+ "builtinStopPts": 400,
+ "topProfit": {
+  "on": true,
+  "pProfit": 500,
+  "pTopPoint": 30
+ }
+}

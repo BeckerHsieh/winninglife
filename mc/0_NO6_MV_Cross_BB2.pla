@@ -14,6 +14,10 @@
 //     sTrailStart: once max open profit >= EntryPrice*sTrailStart/100,
 //     sTrailBack : buy-stop at (best price + EntryPrice*sTrailBack/100)
 //  5. sSymExit=true: short exits on FastMA>SlowMA alone (mirror of Bc_s).
+//  6. lcCap (2026/11/07, 0=off): loseCnt used for the band switch and the Highest/Lowest
+//     lookback is capped at lcCap. Fixes the lock-out where a long losing streak (short copy:
+//     11 losses in the 2025 rally) makes Condition2 practically unreachable (4 sigma band,
+//     220-bar lowest) so no short was taken during the 2026 -25% drops. Short copy: lcCap(3).
 // MXF-18 recommended setup: copy #1/#2 = original long params; copy #3 (short) =
 //  tradeSignal(-1), pSTime(0), pETime(2400), pBEntryLen(47), FastAvg(5), SlowAvg(45),
 //  AvgFitr(120), hLFitr(20), bbStd(2), loseCntFilter(9), trendLen(1000),
@@ -24,10 +28,12 @@ Inputs : tradeSignal(1),pSTime(0950),pETime(2400),pBEntryLen(47);
 Inputs: Price(Close), FastAvg(10), SlowAvg(60), AvgFitr(120), hLFitr(40);
 Inputs: bbStd(1),loseCntFilter(2);
 Inputs: trendLen(0), sStopPct(0), sTrailStart(0), sTrailBack(0), sSymExit(false);
+Inputs: lcCap(0);
 Vars:
   tradeSuccesses(0),
   tradeFailures(0),
   loseCnt(0),
+  lcUse(0),
   myDir(0),
   prevProfit(0),
   kPos(0),
@@ -80,6 +86,10 @@ if (barssinceentry = 0 and marketposition <> 0 and (myDir = 0 or marketposition 
 end;
 
 
+// loseCnt actually used by the filters (capped when lcCap > 0)
+lcUse = loseCnt;
+If lcCap > 0 and lcUse > lcCap then lcUse = lcCap;
+
 // Filter
 upBand=bollingerband(Price,AvgFitr,bbStd);
 up2Band=bollingerband(Price,AvgFitr,bbStd*2);
@@ -87,7 +97,7 @@ downBand=bollingerband(Price,AvgFitr,-bbStd);
 down2Band=bollingerband(Price,AvgFitr,-bbStd*2);
 FilterUp=Filter;
 FilterDown=Filter;
-if (loseCntFilter >= loseCnt) then begin
+if (loseCntFilter >= lcUse) then begin
     FilterUp=upBand;
     FilterDown=downBand;
 end else begin
@@ -95,8 +105,8 @@ end else begin
     FilterDown=down2Band;
 end;
 
-Condition1 = Close > Filter and Close > FilterUp and Close >= Highest(Close, loseCnt * hLFitr);
-Condition2 = Close < Filter and Close < FilterDown and Close <= Lowest(Close, loseCnt * hLFitr);
+Condition1 = Close > Filter and Close > FilterUp and Close >= Highest(Close, lcUse * hLFitr);
+Condition2 = Close < Filter and Close < FilterDown and Close <= Lowest(Close, lcUse * hLFitr);
 
 // Trend filter
 If trendLen > 0 then

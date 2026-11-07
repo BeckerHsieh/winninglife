@@ -163,7 +163,8 @@ function run(bars, cfgIn = {}) {
     // BB copies
     for (const p of cfg.copies) {
       const lcc0 = cfg.sepLoseCnt ? lcDir[p.tradeSignal === -1 ? -1 : 1] : loseCnt;
-      const lcc = cfg.loseCntCap > 0 ? Math.min(lcc0, cfg.loseCntCap) : lcc0;
+      let lcc = cfg.loseCntCap > 0 ? Math.min(lcc0, cfg.loseCntCap) : lcc0;
+      if (p.lcCap > 0) lcc = Math.min(lcc, p.lcCap);   // BB2 input lcCap (per copy)
       const look = lcc * p.hLFitr;
       if (look > cfg.maxBarsBack && !aborted) { aborted = { i, date: b.date, t, loseCnt, look }; }
       const fast = sma(i, p.FastAvg), slow = sma(i, p.SlowAvg), filt = sma(i, p.AvgFitr);
