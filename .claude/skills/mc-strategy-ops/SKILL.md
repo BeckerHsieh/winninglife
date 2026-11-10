@@ -25,7 +25,7 @@ description: 康和 MultiCharts（MC12）交易策略的操作規範與工具：
    - 沒存檔就重開 MC，修改會消失。
 6. **repo 的 `.pla` 改了不會自動生效**，必須在 PowerLanguage Editor 匯入並編譯。查問題時要考慮 MC 正在跑的可能是舊版程式。
 7. **回測前先確認圖表資料範圍**（設定物件 → 商品分頁的起訖日）和預期一致。2026-11-07 曾發生已存檔是 2021/1/1 起，事後被改成 2025/1/1 起，導致回測只剩 200 筆。比對 MC 和本機結果時，本機要切成同樣的資料起點，因為 MaxBarsBack 暖機和 `loseCnt` 都會受影響。
-8. GUI 操作一律交給 `re-agent`，prompt 裡寫明上面的限制。
+8. GUI 操作一律交給 `re-agent`，prompt 裡寫明上面的限制。**不要對 MDI 圖表子視窗送 WM_SYSCOMMAND SC_RESTORE / WM_MDIRESTORE**：2026-11-10 08:34 主視窗被停用時送 SC_RESTORE 造成 MC 崩潰（werfault），未存檔的修改全部遺失；工作底稿要先存好再做任何視窗還原。
    - 結束時還原視窗大小和分頁，回報所有檔案的完整路徑。
    - 讀不到的資料要直接說讀不到，不要推測。
 
@@ -60,6 +60,7 @@ description: 康和 MultiCharts（MC12）交易策略的操作規範與工具：
 - `mc-bt-engine.js`：重現 MXF-18 掛的 5 個訊號，以及 `0_NO6_MV_Cross_BB2`（設定 `deploy:true`）。用法：`run(bars, cfg)`、`stats(trades, from, to)`、`loadBars(csv)`。
 - `mc-bt-compare.js <bars.csv> <mcTrades.csv> [config.json]`：和 MC 交易清單逐筆比對。時間或價格有差異時 exit code 為 2。
 - `mxf18-bb2.config.json`：目前 MXF-18 部署的設定。
+- `mv3-engine.js` / `mv3-opt.js` / `mv3-trail-opt.js` / `mv3-compare.js`：0_NO5_MV_Cross3 與 0_NO6_MV_Cross3（加移動停利/固定停損 input）的本機回測、網格優化、和 MC XML RINA 逐筆比對（`node mv3-compare.js <bars.csv> <trades.xml> [cfgJSON]`）。2026-11-09/10 預設、優化、NO6 移動停利版都和 MC 逐筆 0 差異。`eqDD()` 算含未平倉的權益回落：這類「只在虧損時出場」的策略平倉 MDD 會嚴重低估風險，挑參數要看 eqDD。
 
 ### MC 回測規則（已驗證能逐筆重現，新引擎要照這些做）
 - 前 MaxBarsBack 根 K 棒不交易（MXF-18 是 2000 根）。
@@ -110,3 +111,12 @@ description: 康和 MultiCharts（MC12）交易策略的操作規範與工具：
   - BB2 v1（開著 NO5_SL）：淨利 972,250、598 筆、113,900，設定檔 `scripts/mxf18-bb2.config.json`。
   - 原策略：淨利 599,250、417 筆、98,150。
 - **CYF / IRF / OWF**：`mc/0_NO6_MACD_STOCK_*.pla` v3，已加收盤那根保護、隔天漲跌停檢查、tick 對齊，以及 `pLastBar`、`pEntryTk` 參數。是否已在 MC 編譯要另外確認。
+
+**MXF-MV（MXF1 1 分，資料 2021/1/1～，2026-11-10 08:32 存檔，未開自動交易）**：現行為 0_NO6_MV_Cross3（見下）；0_NO5_MV_Cross3 (0, 0915, 2400, 30, close, 80, 360, 960, 6, 20, 5) 保留但取消勾選。Fixed-200、MaxBarsBack 1500。以下 MC 回測數字是 NO5 版。
+- 備份 `MC_wsp\MXF-MV.wsp.bak_20261109_presave`（預設參數版）。
+- MC 回測：淨利 528,800、1,520 筆（多 +911,550 / 空 −382,750）、PF 1.09、最大平倉交易虧損 322,350、最大策略虧損 352,550。訓練期 2021～2024 每年都賺（+75～130k），2025 年 −105k（按出場年份）。
+- 弱點：滑價每邊 3 點時淨利只剩約 +84k；空單整體虧損，但空單是多單唯一的獲利出場方式（反手），不能單獨關掉；鄰近參數的驗證期結果好壞不一。
+- 預設參數（tradeSignal=1）只做多，而且只有虧損時才出場，1 分 K 上會變成 2022-10 起一直持有多單。
+- **0_NO6_MV_Cross3**（`mc/0_NO6_MV_Cross3.pla`，2026-11-10 已在 MC 編譯）：多了 6 個 input（lTrailStart, lTrailPt, sTrailStart, sTrailPt, lStopPt, sStopPt，0=關閉），全 0 時和 NO5 逐筆相同（MC 已驗證 1,520 筆/528,800）。
+  - 已套在 MXF-MV 並**存檔**（2026-11-10 08:32，NO5 取消勾選）：(1,0915,2400,30,close,40,360,960,6,40,5,100,100,0,0,0,0) → MC 676 筆、淨利 972,000、PF 1.43、最大策略虧損 322,050，和本機 0 差異。工作底稿備份 `MC_wsp\MXF-MV.wsp.bak_20261110`（套 NO6 前）、`.bak_20261110_presave`（存檔前 = 23:26 NO5 版）。
+  - 弱點：只做多，2022 年 −114k（按出場年份）；從未漲到 +100 點的單只靠 MVc_s 出場，最大單筆 −309,750（2025/1→4）；加固定停損會讓訓練期變差，所以沒有採用。
