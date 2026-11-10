@@ -6,6 +6,8 @@
 // Time windows only gate entries; exits are always active (same as Fast5).
 // Entry counts reset when a window starts (equivalent to Fast5's daily reset per signal).
 // Set pSTime2 = pETime2 to disable the second window.
+// pExitWin = 1 (2026-11-10): exits only for positions opened inside this signal's
+// windows (fixes duplicate SF2SL fills when two Fast5 run on the MXF chart, 11/10 12:31).
 // ==============================
 
 Inputs:
@@ -33,7 +35,13 @@ Inputs:
     lMacdSmooth(9),
     LEntry(-5),          // long entry: xmacd crosses over
     LExit(-60),          // long exit: xmacd crosses under
-    LStopPt(0);          // points, 0 = off
+    LStopPt(0),          // points, 0 = off
+    // ---- Exit ownership by time window (2026-11-10) ----
+    pExitWin(0);         // 0 = exits always active (original behavior)
+                         // 1 = exits only for a position whose entry order was sent inside
+                         //     this signal's time windows. Use when several Fast5 signals with
+                         //     NON-overlapping windows share one chart, so only the signal that
+                         //     opened the position sends its exit / stop orders.
 
 
 Vars:
@@ -45,7 +53,9 @@ Vars:
     ConditionTime(false),
     TimeWin(0),          // 0 = outside windows, 1 = window 1, 2 = window 2
     AllowLong(false),
-    AllowShort(false);
+    AllowShort(false),
+    OwnPos(true),        // position was opened by an order sent inside this signal's windows
+    ExitOK(true);
 
 // ==============================
 // Direction control
@@ -134,24 +144,34 @@ Begin
 End;
 
 // ==============================
+// Exit ownership (pExitWin = 1)
+// Entry orders fill at the next bar, so the order was sent on the bar before the
+// entry bar: the position belongs to this signal if that bar was inside its windows.
+// ==============================
+If MarketPosition <> 0 and BarsSinceEntry = 0 then
+    OwnPos = ConditionTime[1];
+
+ExitOK = (pExitWin = 0) or OwnPos;
+
+// ==============================
 // Signal exits
 // ==============================
-If MarketPosition = 1 and LongExitSig then
+If MarketPosition = 1 and LongExitSig and ExitOK then
     Sell("MACD-LX") next bar at market;
 
-If MarketPosition = -1 and FastMA > SlowMA then
+If MarketPosition = -1 and FastMA > SlowMA and ExitOK then
     BuyToCover("SF2Exit") next bar at market;
 
 // ==============================
 // Stop loss / profit target (points, from the bar after entry)
 // ==============================
-If MarketPosition = -1 then
+If MarketPosition = -1 and ExitOK then
 Begin
     If StopLossPt > 0 then
         BuyToCover("SF2SL") next bar at EntryPrice + StopLossPt stop;
 End;
 
-If MarketPosition = 1 then
+If MarketPosition = 1 and ExitOK then
 Begin
     If LStopPt > 0 then
         Sell("L-SL") next bar at EntryPrice - LStopPt stop;
