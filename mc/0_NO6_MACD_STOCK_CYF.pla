@@ -4,6 +4,8 @@
 // CYF version: long and short defaults optimized on CYF1 1min 2025/6~2026/10
 // (commission 600/fill, MaxBarsBack 800). Same logic as 0_NO6_MACD_STOCK2.
 // v3 (2026/11/06): session-end guard + next-day price limit + optional marketable-limit entry.
+// v4 (2026/11/12): IRF S-TP buy limit 735 (entry 835 - 100) rejected 100x (exceeds price limit) -> AT auto-off.
+//   Limit estimate also bounded by today's traded range; TP/SL only sent within pNearPct % of Close.
 // ==============================
 
 Inputs:
@@ -34,7 +36,10 @@ Inputs:
     SEntry(-3),         // short entry: short xmacd crosses under
     SExit(5),           // short exit: short xmacd crosses over
     SStopPt(0),         // points, 0 = off
-    SProfitPt(30);     // points, 0 = off
+    SProfitPt(30),     // points, 0 = off
+    // ---- Price-limit guard (v4, 2026/11/12) ----
+    pNearPct(4);        // TP/SL sent only when within pNearPct % of Close (0 = off). A TP/SL far
+                        // from price can be beyond the +/-10% daily band and is rejected every bar.
 
 Vars:
     dif(0), dem(0), xmacd(0),
@@ -57,7 +62,10 @@ Vars:
     LExitPend(false),
     SExitPend(false),
     TgtPx(0),
-    TkSz(0);
+    TkSz(0),
+    DayHi(0),
+    DayLo(0),
+    NearOK(true);
 
 // ==============================
 // Direction control
@@ -97,7 +105,20 @@ Begin
     PrevClose  = Close[1];
     UpLimit    = PrevClose * 1.09;
     DnLimit    = PrevClose * 0.91;
+    DayHi      = High;
+    DayLo      = Low;
+End
+Else
+Begin
+    If High > DayHi then DayHi = High;
+    If Low  < DayLo then DayLo = Low;
 End;
+
+// Today's traded range must lie inside today's band (ref +/-10%): ref >= DayHi/1.1 and ref <= DayLo/0.9.
+// So the real limit-down is at least DayHi*0.9/1.1 and limit-up at most DayLo*1.1/0.9; tighten the
+// close-based estimate with these (catches a stale/wrong PrevClose, e.g. settlement far from close).
+If DayHi * 0.9 / 1.1 * 1.005 > DnLimit then DnLimit = DayHi * 0.9 / 1.1 * 1.005;
+If DayLo * 1.1 / 0.9 * 0.995 < UpLimit then UpLimit = DayLo * 1.1 / 0.9 * 0.995;
 
 // ==============================
 // Session-end guard
@@ -241,7 +262,8 @@ Begin
         If TgtPx < 50   then TkSz = 0.05;
         If TgtPx < 10   then TkSz = 0.01;
         TgtPx = Ceiling(TgtPx / TkSz - 0.000001) * TkSz;   // sell stop: round up
-        If TgtPx > OrdDn and TgtPx < OrdUp then
+        NearOK = (pNearPct <= 0) or (AbsValue(TgtPx - Close) <= Close * pNearPct / 100);
+        If TgtPx > OrdDn and TgtPx < OrdUp and NearOK then
             Sell("L-SL") next bar at TgtPx stop;
     End;
     If LProfitPt > 0 then
@@ -254,7 +276,8 @@ Begin
         If TgtPx < 50   then TkSz = 0.05;
         If TgtPx < 10   then TkSz = 0.01;
         TgtPx = Ceiling(TgtPx / TkSz - 0.000001) * TkSz;   // sell limit: round up
-        If TgtPx < OrdUp and TgtPx > OrdDn then
+        NearOK = (pNearPct <= 0) or (AbsValue(TgtPx - Close) <= Close * pNearPct / 100);
+        If TgtPx < OrdUp and TgtPx > OrdDn and NearOK then
             Sell("L-TP") next bar at TgtPx limit;
     End;
 End;
@@ -271,7 +294,8 @@ Begin
         If TgtPx < 50   then TkSz = 0.05;
         If TgtPx < 10   then TkSz = 0.01;
         TgtPx = Floor(TgtPx / TkSz + 0.000001) * TkSz;     // buy stop: round down
-        If TgtPx < OrdUp and TgtPx > OrdDn then
+        NearOK = (pNearPct <= 0) or (AbsValue(TgtPx - Close) <= Close * pNearPct / 100);
+        If TgtPx < OrdUp and TgtPx > OrdDn and NearOK then
             BuyToCover("S-SL") next bar at TgtPx stop;
     End;
     If SProfitPt > 0 then
@@ -284,7 +308,8 @@ Begin
         If TgtPx < 50   then TkSz = 0.05;
         If TgtPx < 10   then TkSz = 0.01;
         TgtPx = Floor(TgtPx / TkSz + 0.000001) * TkSz;     // buy limit: round down
-        If TgtPx > OrdDn and TgtPx < OrdUp then
+        NearOK = (pNearPct <= 0) or (AbsValue(TgtPx - Close) <= Close * pNearPct / 100);
+        If TgtPx > OrdDn and TgtPx < OrdUp and NearOK then
             BuyToCover("S-TP") next bar at TgtPx limit;
     End;
 End;
