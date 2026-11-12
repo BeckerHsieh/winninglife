@@ -6,6 +6,14 @@
 // in favour of the position, exit next bar with a stop at best - xTrailPt (long) /
 // best + xTrailPt (short). Optional fixed stop xStopPt points from entry (0 = off);
 // when both apply the tighter stop is used. Active at all times (not limited by pSTime/pETime).
+// v2 (2026/11/10, 0_NO6 rules): second window pSTime2/pETime2 (0/0 = off) and pExitWin.
+//   MXF windows: 1st 0845~2400, 2nd 0000~0500 (HHmm windows cannot cross 2400).
+//   pExitWin = 0: original behaviour (signal exits limited to the windows, trailing stop always on).
+//   pExitWin = 1: exits / stops only for a position THIS signal owns = entered on an order sent inside its
+//     windows, in a direction its tradeSignal allows; owned exits are not limited by time. Use it when
+//     several signals share one chart (e.g. a long signal tradeSignal=1 + a short signal tradeSignal=-1)
+//     so each position gets exactly one set of exit orders at the broker.
+//   With the 3 new inputs at 0 the signal behaves exactly like the previous version.
 // ==============================
 
 Inputs: tradeSignal(1),pSTime(0915),pETime(2400),pBEntryLen(2);
@@ -13,7 +21,9 @@ Inputs: Price(Close), FastAvg(10), SlowAvg(60), AvgFitr(120);
 Inputs: LoseAvg(6),LoseScope(10),LostMulti(5);
 Inputs: lTrailStart(0), lTrailPt(0), sTrailStart(0), sTrailPt(0);   // points, 0 = off
 Inputs: lStopPt(0), sStopPt(0);                                     // points, 0 = off
+Inputs: pSTime2(0), pETime2(0), pExitWin(0);                         // 2nd window (0/0 = off); 1 = exits only for own positions
 Vars: FastMA(0), SlowMA(0), Filter(0), LoseMA(0), BestHi(0), BestLo(0), StopPx(0);
+Vars: InWin(false), OwnPos(true), ExitOK(true), ExitT(false);
 
 FastMA = Average (Price, FastAvg);
 SlowMA = Average (Price, SlowAvg);
@@ -23,24 +33,31 @@ LoseMA = Average (Price, LoseAvg);
 Condition1 = Close > Filter;
 Condition2 = Close < Filter;
 
-IF tradeSignal <> -1 and t>pSTime and t<pETime and (barssinceexit(1) > pBEntryLen or totaltrades = 0) 
+InWin = (t > pSTime and t < pETime) or (t > pSTime2 and t < pETime2);
+// ownership: the entry order was sent on the bar before the entry bar
+If marketposition <> 0 and barssinceentry = 0 then
+	OwnPos = InWin[1] and ((marketposition > 0 and tradeSignal <> -1) or (marketposition < 0 and tradeSignal <> 1));
+ExitOK = pExitWin = 0 or OwnPos;
+If pExitWin = 0 then ExitT = InWin else ExitT = OwnPos;
+
+IF tradeSignal <> -1 and InWin and (barssinceexit(1) > pBEntryLen or totaltrades = 0) 
 	And marketposition <= 0
 	And Close >= Highest(close, FastAvg)
 	And FastMA > SlowMA 
 	And Condition1
 	Then
   buy("MVc") next bar at market;
-IF t>pSTime and t<pETime 
+IF ExitT
 	And marketposition > 0	
 	And Close < entryprice(0) And LoseMA[1]-LoseMA > LoseScope Then
   Sell("MVc_s") next bar at market;
 
-IF tradeSignal <> 1 and t>pSTime and t<pETime and (barssinceexit(1) > pBEntryLen or totaltrades = 0)
+IF tradeSignal <> 1 and InWin and (barssinceexit(1) > pBEntryLen or totaltrades = 0)
 	And marketposition >= 0
 	And FastMA crosses below SlowMA 
 	And Condition2 Then
   sellshort("MVs") next bar at market;
-IF t>pSTime and t<pETime 
+IF ExitT
 	And marketposition < 0
 	And Close > entryprice(0) 
 	And Close-Close[1] > LoseScope And Close[1]-Close[2] > LoseScope And Close[2]-Close[3] > LoseScope Then
@@ -52,7 +69,7 @@ If marketposition > 0 then Begin
 	StopPx = 0;
 	If lTrailPt > 0 and BestHi - entryprice(0) >= lTrailStart then StopPx = BestHi - lTrailPt;
 	If lStopPt > 0 then StopPx = MaxList(StopPx, entryprice(0) - lStopPt);
-	If StopPx > 0 then Sell("MVc_tr") next bar at StopPx stop;
+	If StopPx > 0 and ExitOK then Sell("MVc_tr") next bar at StopPx stop;
 End;
 If marketposition < 0 then Begin
 	If barssinceentry = 0 then BestLo = Low else if Low < BestLo then BestLo = Low;
@@ -61,5 +78,5 @@ If marketposition < 0 then Begin
 	If sStopPt > 0 then Begin
 		If StopPx = 0 then StopPx = entryprice(0) + sStopPt else StopPx = MinList(StopPx, entryprice(0) + sStopPt);
 	End;
-	If StopPx > 0 then buytocover("MVs_tr") next bar at StopPx stop;
+	If StopPx > 0 and ExitOK then buytocover("MVs_tr") next bar at StopPx stop;
 End;

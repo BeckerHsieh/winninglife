@@ -8,6 +8,8 @@ const DEFAULT = {
   tradeSignal: 1, pSTime: 915, pETime: 2400, pBEntryLen: 2,
   FastAvg: 10, SlowAvg: 60, AvgFitr: 120, LoseAvg: 6, LoseScope: 10,
   lTrailStart: 0, lTrailPt: 0, sTrailStart: 0, sTrailPt: 0, lStopPt: 0, sStopPt: 0,   // 0_NO6 trailing stop (0 = off)
+  pSTime2: 0, pETime2: 0, pExitWin: 0,                                                 // 0_NO6 v2: 2nd window, exit ownership
+  sEntryMode: 0,                                   // 0 = FastMA crosses below SlowMA (original); 1 = breakdown: Close <= Lowest(close,FastAvg) and FastMA < SlowMA
   bpv: 50, commission: 200, slippagePts: 0, maxBarsBack: 1500,
 };
 
@@ -35,21 +37,39 @@ function highest(P, len) {           // Highest(close, len) including current ba
   }
   P.hiC.set(len, a); return a;
 }
+function lowest(P, len) {            // Lowest(close, len) including current bar
+  P.loC = P.loC || new Map(); if (P.loC.has(len)) return P.loC.get(len);
+  const a = new Float64Array(P.n), q = new Int32Array(P.n); let h = 0, tl = 0;
+  for (let i = 0; i < P.n; i++) {
+    while (tl > h && P.c[q[tl - 1]] >= P.c[i]) tl--;
+    q[tl++] = i; if (q[h] <= i - len) h++;
+    a[i] = P.c[q[h]];
+  }
+  P.loC.set(len, a); return a;
+}
 
+// Single signal: run(P, cfg). Several signals on ONE chart sharing one position: run(P, [cfgA, cfgB, ...])
+// (MC evaluates signals in list order; a later signal's entry replaces an earlier one on the same bar).
+// 0_NO6 extras: pSTime2/pETime2 second window (0/0 = off); pExitWin=1 -> exits/stops only for positions this
+// signal owns (entered while its window was on at the order bar AND the direction is allowed by its tradeSignal),
+// and owned exits are not time-gated. pExitWin=0 = original behaviour (exits gated by window, trail always on).
 function run(P, cfgIn = {}) {
-  const cfg = { ...DEFAULT, ...cfgIn };
+  const cfgs = (Array.isArray(cfgIn) ? cfgIn : [cfgIn]).map(x => ({ ...DEFAULT, ...x }));
+  const g = cfgs[0];                               // bpv / commission / slippage / maxBarsBack from the first signal
   const { n, c, o, h, l, t, d } = P;
-  const fma = sma(P, cfg.FastAvg), sma2 = sma(P, cfg.SlowAvg), flt = sma(P, cfg.AvgFitr), lma = sma(P, cfg.LoseAvg);
-  const hi = highest(P, cfg.FastAvg);
-  const slip = cfg.slippagePts, trades = [];
-  let mp = 0, ePx = 0, eI = -1, eName = '', lastExitI = -1, total = 0;
-  let pend = null, best = 0, trail = 0;          // trail: pending trailing stop price (0 = none)                                   // { exit:name|null, entry:{dir,name}|null }
+  const S = cfgs.map(cfg => ({
+    cfg, fma: sma(P, cfg.FastAvg), sma2: sma(P, cfg.SlowAvg), flt: sma(P, cfg.AvgFitr), lma: sma(P, cfg.LoseAvg), hi: highest(P, cfg.FastAvg), lo: cfg.sEntryMode ? lowest(P, cfg.FastAvg) : null,
+    own: true, inPrev: false, trail: 0,
+  }));
+  const slip = g.slippagePts, trades = [];
+  let mp = 0, ePx = 0, eI = -1, eName = '', lastExitI = -1, total = 0, pend = null, best = 0;
   const close = (i, px, name) => {
-    const pnl = (px - ePx) * mp * cfg.bpv - 2 * cfg.commission - 2 * slip * cfg.bpv;
+    const pnl = (px - ePx) * mp * g.bpv - 2 * g.commission - 2 * slip * g.bpv;
     trades.push({ dir: mp, eDate: d[eI], eT: t[eI], ePx, xDate: d[i], xT: t[i], xPx: px, eName, name, pnl });
     mp = 0; lastExitI = i; total++;
   };
-  for (let i = cfg.maxBarsBack; i < n; i++) {
+  const inWin = (cfg, ti) => (ti > cfg.pSTime && ti < cfg.pETime) || (ti > cfg.pSTime2 && ti < cfg.pETime2);
+  for (let i = g.maxBarsBack; i < n; i++) {
     // fills at open of bar i
     if (pend) {
       if (pend.exit && mp !== 0) close(i, o[i], pend.exit);
@@ -59,22 +79,37 @@ function run(P, cfgIn = {}) {
       }
       pend = null;
     }
-    if (trail && mp !== 0 && eI < i) {            // only the position that generated the stop (not one opened at this open)                         // trailing stop for the position held since before this bar
-      if (mp > 0 && l[i] <= trail) close(i, Math.min(o[i], trail), 'MVc_tr');
-      else if (mp < 0 && h[i] >= trail) close(i, Math.max(o[i], trail), 'MVs_tr');
+    if (mp !== 0 && eI < i) {                       // stops placed for the position held since before this bar
+      let px = 0;
+      for (const s of S) if (s.trail) px = px ? (mp > 0 ? Math.max(px, s.trail) : Math.min(px, s.trail)) : s.trail;
+      if (px) {
+        if (mp > 0 && l[i] <= px) close(i, Math.min(o[i], px), 'MVc_tr');
+        else if (mp < 0 && h[i] >= px) close(i, Math.max(o[i], px), 'MVs_tr');
+      }
     }
-    trail = 0;
-    if (mp > 0) { best = (eI === i) ? h[i] : Math.max(best, h[i]); if (cfg.lTrailPt > 0 && best - ePx >= cfg.lTrailStart) trail = best - cfg.lTrailPt; if (cfg.lStopPt > 0) trail = Math.max(trail, ePx - cfg.lStopPt); }
-    if (mp < 0) { best = (eI === i) ? l[i] : Math.min(best, l[i]); if (cfg.sTrailPt > 0 && ePx - best >= cfg.sTrailStart) trail = best + cfg.sTrailPt; if (cfg.sStopPt > 0) trail = trail ? Math.min(trail, ePx + cfg.sStopPt) : ePx + cfg.sStopPt; }
-    // evaluate at close of bar i
-    const ti = t[i], inT = ti > cfg.pSTime && ti < cfg.pETime;
-    if (!inT) continue;
-    const bse = total === 0 || (i - lastExitI) > cfg.pBEntryLen;
+    const ti = t[i];
+    if (mp > 0) best = (eI === i) ? h[i] : Math.max(best, h[i]);
+    if (mp < 0) best = (eI === i) ? l[i] : Math.min(best, l[i]);
     let entry = null, exit = null;
-    if (cfg.tradeSignal !== -1 && bse && mp <= 0 && c[i] >= hi[i] && fma[i] > sma2[i] && c[i] > flt[i]) entry = { dir: 1, name: 'MVc' };
-    if (mp > 0 && c[i] < ePx && lma[i - 1] - lma[i] > cfg.LoseScope) exit = 'MVc_s';
-    if (cfg.tradeSignal !== 1 && bse && mp >= 0 && fma[i] < sma2[i] && fma[i - 1] >= sma2[i - 1] && c[i] < flt[i]) entry = { dir: -1, name: 'MVs' };
-    if (mp < 0 && c[i] > ePx && c[i] - c[i - 1] > cfg.LoseScope && c[i - 1] - c[i - 2] > cfg.LoseScope && c[i - 2] - c[i - 3] > cfg.LoseScope) exit = 'MVs_b';
+    for (const s of S) {
+      const cfg = s.cfg, inT = inWin(cfg, ti);
+      if (mp !== 0 && eI === i)                     // BarsSinceEntry = 0: decide ownership (order bar = previous bar)
+        s.own = s.inPrev && (mp > 0 ? cfg.tradeSignal !== -1 : cfg.tradeSignal !== 1);
+      s.inPrev = inT;
+      const exOK = cfg.pExitWin ? s.own : true;
+      // trailing / fixed stop for next bar
+      s.trail = 0;
+      if (exOK && mp > 0) { if (cfg.lTrailPt > 0 && best - ePx >= cfg.lTrailStart) s.trail = best - cfg.lTrailPt; if (cfg.lStopPt > 0) s.trail = Math.max(s.trail, ePx - cfg.lStopPt); }
+      if (exOK && mp < 0) { if (cfg.sTrailPt > 0 && ePx - best >= cfg.sTrailStart) s.trail = best + cfg.sTrailPt; if (cfg.sStopPt > 0) s.trail = s.trail ? Math.min(s.trail, ePx + cfg.sStopPt) : ePx + cfg.sStopPt; }
+      // entries (window-gated) and signal exits (window-gated when pExitWin=0, ownership-gated when 1)
+      const exT = cfg.pExitWin ? s.own : inT;
+      const { fma, sma2, flt, lma, hi, lo } = s;
+      const bse = total === 0 || (i - lastExitI) > cfg.pBEntryLen;
+      if (inT && cfg.tradeSignal !== -1 && bse && mp <= 0 && c[i] >= hi[i] && fma[i] > sma2[i] && c[i] > flt[i]) entry = { dir: 1, name: 'MVc' };
+      if (exT && mp > 0 && c[i] < ePx && lma[i - 1] - lma[i] > cfg.LoseScope) exit = exit || 'MVc_s';
+      if (inT && cfg.tradeSignal !== 1 && bse && mp >= 0 && fma[i] < sma2[i] && (cfg.sEntryMode ? c[i] <= lo[i] : fma[i - 1] >= sma2[i - 1]) && c[i] < flt[i]) entry = { dir: -1, name: 'MVs' };
+      if (exT && mp < 0 && c[i] > ePx && c[i] - c[i - 1] > cfg.LoseScope && c[i - 1] - c[i - 2] > cfg.LoseScope && c[i - 2] - c[i - 3] > cfg.LoseScope) exit = exit || 'MVs_b';
+    }
     if (entry || exit) pend = { exit, entry };
   }
   return { trades, open: mp ? { dir: mp, ePx, eDate: d[eI], eT: t[eI] } : null };
