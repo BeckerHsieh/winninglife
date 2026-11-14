@@ -1,0 +1,4 @@
+[
+  { "tradeSignal": 1, "pSTime": 845, "pETime": 2400, "pBEntryLen": 30, "FastAvg": 720, "SlowAvg": 3840, "KdHighFilter": 80, "KdLowFilter": 20, "KdMulti": 1, "loseCntFilter": 2, "lStopPt": 400, "pSTime2": 0, "pETime2": 500, "pExitWin": 1, "lcCap": 2, "pFlatOnly": 0, "maxBarsBack": 12000 },
+  { "tradeSignal": -1, "pSTime": 845, "pETime": 2400, "pBEntryLen": 30, "FastAvg": 960, "SlowAvg": 2880, "KdHighFilter": 20, "KdLowFilter": 20, "KdMulti": 1, "loseCntFilter": 2, "sTrailStart": 100, "sTrailPt": 600, "sStopPt": 400, "pSTime2": 0, "pETime2": 500, "pExitWin": 1, "lcCap": 2, "pFlatOnly": 1, "maxBarsBack": 12000 }
+]

@@ -1,0 +1,98 @@
+// ==============================
+// 0_NO6_MV_Cross_KD  (2026/11/14)
+// Based on 0_NO5_MV_Cross_KD: MA cross (FastMA / SlowMA) + KD filter whose look-back grows with the losing streak.
+// With every new input at 0 it behaves exactly like 0_NO5_MV_Cross_KD (the debug print is removed).
+// New inputs (0_NO6 rules):
+//   lTrailStart/lTrailPt, sTrailStart/sTrailPt : trailing stop in points. Once the best price since entry has moved
+//     >= xTrailStart in favour, exit next bar with a stop at best - xTrailPt (long) / best + xTrailPt (short). 0 = off.
+//   lStopPt / sStopPt : fixed stop in points from the entry price (0 = off). The tighter of trail / fixed is used.
+//   pSTime2 / pETime2 : second window (0/0 = off). MXF: 1st 0845~2400, 2nd 0000~0500 (HHmm cannot cross 2400).
+//   pExitWin = 0 : original behaviour (signal exits limited to the windows, stops always on).
+//   pExitWin = 1 : exits / stops only for a position THIS signal owns = entered on an order sent inside its windows,
+//     in a direction its tradeSignal allows; owned exits are not limited by time. Use it when several signals share
+//     one chart (long signal tradeSignal=1 + short signal tradeSignal=-1) so each position gets exactly one set of
+//     exit orders at the broker.
+//   lcCap : cap on the loseCnt used for the KD look-back (0 = no cap). Keeps FastAvg/SlowAvg * KdMulti * lcCap
+//     inside MaxBarsBack and stops the filter from locking up after a long losing streak.
+//   pFlatOnly = 1 : enter only when flat (never reverse a position, e.g. one held by the other signal).
+// AvgFitr / hLFitr are kept only so the input order matches 0_NO5_MV_Cross_KD; they are not used.
+// MaxBarsBack must be >= SlowAvg * KdMulti * (largest loseCnt used).
+// ==============================
+
+Inputs: tradeSignal(1),pSTime(0950),pETime(2400),pBEntryLen(47);
+Inputs: Price(Close), FastAvg(10), SlowAvg(50), AvgFitr(120), hLFitr(40);
+Inputs: KdHighFilter(80),KdLowFilter(20),KdMulti(1),loseCntFilter(2);
+Inputs: lTrailStart(0), lTrailPt(0), sTrailStart(0), sTrailPt(0);   // points, 0 = off
+Inputs: lStopPt(0), sStopPt(0);                                     // points, 0 = off
+Inputs: pSTime2(0), pETime2(0), pExitWin(0);                         // 2nd window (0/0 = off); 1 = exits only for own positions
+Inputs: lcCap(0), pFlatOnly(0);
+Vars: loseCnt(0), lcUse(0), kLen(1);
+Vars: FastMA(0), SlowMA(0), HighValue(high), LowValue(low), KValue(0), DValue(0), rsv(0);
+Vars: BestHi(0), BestLo(0), StopPx(0);
+Vars: InWin(false), OwnPos(true), ExitOK(true), ExitT(false), FlatOK(true), BseOK(false);
+
+FastMA = Average (Price, FastAvg);
+SlowMA = Average (Price, SlowAvg);
+
+InWin = (t > pSTime and t < pETime) or (t > pSTime2 and t < pETime2);
+
+// losing-streak count (position level) and ownership, both decided on the entry bar
+If barssinceentry = 0 and marketposition <> 0 then begin
+	If positionprofit(1) > 0 then loseCnt = 0 else loseCnt = loseCnt + 1;
+	// the entry order was sent on the bar before the entry bar
+	OwnPos = InWin[1] and ((marketposition > 0 and tradeSignal <> -1) or (marketposition < 0 and tradeSignal <> 1));
+end;
+ExitOK = pExitWin = 0 or OwnPos;
+If pExitWin = 0 then ExitT = InWin else ExitT = OwnPos;
+
+// KD filter
+lcUse = loseCnt;
+If lcCap > 0 and lcUse > lcCap then lcUse = lcCap;
+If loseCntFilter >= loseCnt then kLen = KdMulti else kLen = KdMulti * lcUse;
+
+HighValue = Highest(high, FastAvg * kLen);
+LowValue = Lowest(low, SlowAvg * kLen);
+If HighValue <> LowValue then rsv = 100 * (close - LowValue) / (HighValue - LowValue);
+KValue = rsv/3 + 2*KValue[1]/3;
+DValue = KValue/3 + 2*DValue[1]/3;
+
+Condition1 = KValue > KdHighFilter and DValue > KdLowFilter;
+Condition2 = KValue < KdHighFilter and DValue < KdLowFilter;
+
+FlatOK = pFlatOnly = 0 or marketposition = 0;
+BseOK = barssinceexit(1) > pBEntryLen or totaltrades = 0;
+
+IF tradeSignal <> -1 and InWin and BseOK and FlatOK
+	And FastMA > SlowMA
+	And Condition1
+	Then
+  buy("Bc") next bar at market;
+IF ExitT and marketposition > 0
+	And FastMA < SlowMA Then
+  Sell("Bc_s") next bar at market;
+
+IF tradeSignal <> 1 and InWin and BseOK and FlatOK
+	And FastMA < SlowMA
+	And Condition2 Then
+  sellshort("Sc") next bar at market;
+IF ExitT and marketposition < 0
+	And FastMA > SlowMA Then
+  buytocover("Sc_b") next bar at market;
+
+// ---- trailing / fixed stop ----
+If marketposition > 0 then Begin
+	If barssinceentry = 0 then BestHi = High else if High > BestHi then BestHi = High;
+	StopPx = 0;
+	If lTrailPt > 0 and BestHi - entryprice(0) >= lTrailStart then StopPx = BestHi - lTrailPt;
+	If lStopPt > 0 then StopPx = MaxList(StopPx, entryprice(0) - lStopPt);
+	If StopPx > 0 and ExitOK then Sell("Bc_tr") next bar at StopPx stop;
+End;
+If marketposition < 0 then Begin
+	If barssinceentry = 0 then BestLo = Low else if Low < BestLo then BestLo = Low;
+	StopPx = 0;
+	If sTrailPt > 0 and entryprice(0) - BestLo >= sTrailStart then StopPx = BestLo + sTrailPt;
+	If sStopPt > 0 then Begin
+		If StopPx = 0 then StopPx = entryprice(0) + sStopPt else StopPx = MinList(StopPx, entryprice(0) + sStopPt);
+	End;
+	If StopPx > 0 and ExitOK then buytocover("Sc_tr") next bar at StopPx stop;
+End;
